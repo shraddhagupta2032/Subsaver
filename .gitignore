@@ -1,0 +1,22 @@
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+# Environment files
+.env
+.env.*
+!.env.example
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+
