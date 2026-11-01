@@ -20,11 +20,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Automatically create database tables
+# Automatically create database tables and heal inverted expenses
 try:
     models.Base.metadata.create_all(bind=engine)
+    from app.database import SessionLocal
+    with SessionLocal() as db:
+        expenses_to_check = db.query(models.Expense).all()
+        for exp in expenses_to_check:
+            payer_split = next((s for s in exp.splits if s.user_id == exp.payer_id), None)
+            paid_splits = [s for s in exp.splits if s.status == "PAID"]
+            if payer_split and payer_split.status != "PAID" and len(paid_splits) == 1:
+                actual_payer_id = paid_splits[0].user_id
+                print(f"Auto-repairing inverted expense {exp.id} ('{exp.title}'): payer_id {exp.payer_id} -> {actual_payer_id}")
+                exp.payer_id = actual_payer_id
+        db.commit()
 except Exception as e:
-    print(f"Warning: Could not initialize database tables on startup: {e}")
+    print(f"Notice: Database startup check: {e}")
 
 
 # Include Routers

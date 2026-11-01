@@ -102,6 +102,25 @@ export const ExpenseDetailsScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleDeleteExpense = () => {
+    Alert.alert('Delete Expense', 'Are you sure you want to delete this expense? All split records will be removed.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await expensesApi.deleteExpense(expenseId);
+            Alert.alert('Expense Deleted', 'The expense was removed successfully.');
+            navigation.goBack();
+          } catch (err) {
+            Alert.alert('Error', err.message || 'Failed to delete expense.');
+          }
+        },
+      },
+    ]);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -242,6 +261,18 @@ export const ExpenseDetailsScreen = ({ route, navigation }) => {
             <Text style={styles.notesText}>{expense.notes}</Text>
           </View>
         ) : null}
+
+        {/* Delete Expense Action */}
+        {(expense?.created_by === user?.id || expense?.payer_id === user?.id) && (
+          <TouchableOpacity
+            style={styles.deleteExpenseBtn}
+            onPress={handleDeleteExpense}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={16} color={colors.danger} style={{ marginRight: 6 }} />
+            <Text style={styles.deleteExpenseBtnText}>Delete Expense</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Pay Later Modal */}
@@ -538,5 +569,23 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
     marginTop: 12,
+  },
+  deleteExpenseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
+  },
+  deleteExpenseBtnText: {
+    color: colors.danger,
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

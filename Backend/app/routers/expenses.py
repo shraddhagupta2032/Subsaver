@@ -122,12 +122,15 @@ def create_expense(
     group_members = db.query(models.GroupMember).filter(
         models.GroupMember.group_id == expense_in.group_id
     ).all()
-    member_map = {m.user_id: m.user_id for m in group_members}
-    member_map.update({m.id: m.user_id for m in group_members})
+    group_member_user_ids = {m.user_id for m in group_members}
+    group_member_row_ids = {m.id: m.user_id for m in group_members}
 
-    # 6. Validate payer is in group
-    resolved_payer_id = member_map.get(expense_in.payer_id)
-    if not resolved_payer_id:
+    # 6. Validate payer is in group (prefer user_id first to prevent ID collision)
+    if expense_in.payer_id in group_member_user_ids:
+        resolved_payer_id = expense_in.payer_id
+    elif expense_in.payer_id in group_member_row_ids:
+        resolved_payer_id = group_member_row_ids[expense_in.payer_id]
+    else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Payer must be a member of the group"
@@ -136,13 +139,15 @@ def create_expense(
     # 7. Validate split members
     resolved_split_ids = []
     for uid in dict.fromkeys(expense_in.split_user_ids):
-        resolved_u = member_map.get(uid)
-        if not resolved_u:
+        if uid in group_member_user_ids:
+            resolved_split_ids.append(uid)
+        elif uid in group_member_row_ids:
+            resolved_split_ids.append(group_member_row_ids[uid])
+        else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Split user with ID {uid} is not a member of this group"
             )
-        resolved_split_ids.append(resolved_u)
 
     unique_split_user_ids = list(dict.fromkeys(resolved_split_ids))
     if not unique_split_user_ids:
@@ -179,7 +184,7 @@ def create_expense(
     # 10. Create ExpenseSplit records
     now_utc = datetime.now(timezone.utc)
     for uid, share_amount in calculated_splits:
-        is_payer = (uid == expense_in.payer_id)
+        is_payer = (uid == resolved_payer_id)
         split_record = models.ExpenseSplit(
             expense_id=new_expense.id,
             user_id=uid,
@@ -380,4 +385,29 @@ def set_split_pay_later(
     db.refresh(split)
 
     return format_split_response(split, db)
+
+
+@router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    expense = db.query(models.Expense).filter(models.Expense.id == expense_id).first()
+    if not expense:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Expense not found"
+        )
+
+    # Only creator or payer can delete expense
+    if expense.created_by != current_user.id and expense.payer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the expense creator or payer can delete this expense"
+        )
+
+    db.delete(expense)
+    db.commit()
+    return None
 

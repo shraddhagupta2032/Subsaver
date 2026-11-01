@@ -60,7 +60,12 @@ export const AddExpenseScreen = ({ route, navigation }) => {
           setMembers(mems || []);
           setSelectedUserIds(mems.map((m) => m.user_id || m.id));
           if (!payerId && mems.length > 0) {
-            setPayerId(mems[0].user_id || mems[0].id);
+            const currentUserMember = mems.find((m) => (m.user_id || m.id) === user?.id);
+            if (currentUserMember) {
+              setPayerId(currentUserMember.user_id || currentUserMember.id);
+            } else {
+              setPayerId(mems[0].user_id || mems[0].id);
+            }
           }
         }
       } catch (e) {
@@ -68,7 +73,7 @@ export const AddExpenseScreen = ({ route, navigation }) => {
       }
     }
     loadGroupsAndMembers();
-  }, [selectedGroupId, payerId]);
+  }, [selectedGroupId, payerId, user?.id]);
 
   const toggleMemberSelection = (uid) => {
     if (selectedUserIds.includes(uid)) {

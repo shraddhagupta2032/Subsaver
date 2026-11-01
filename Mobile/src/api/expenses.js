@@ -50,4 +50,10 @@ export const expensesApi = {
       },
     });
   },
+
+  async deleteExpense(expenseId) {
+    return await apiRequest(`/expenses/${expenseId}`, {
+      method: 'DELETE',
+    });
+  },
 };

@@ -46,12 +46,15 @@ def create_shared_subscription(
     group_members = db.query(models.GroupMember).filter(
         models.GroupMember.group_id == group_id
     ).all()
-    member_map = {m.user_id: m.user_id for m in group_members}
-    member_map.update({m.id: m.user_id for m in group_members})
+    group_user_ids = {m.user_id for m in group_members}
+    group_row_ids = {m.id: m.user_id for m in group_members}
 
-    # Validate & resolve payer
-    resolved_payer_id = member_map.get(sub_in.payer_id)
-    if not resolved_payer_id:
+    # Validate & resolve payer (prefer user_id first)
+    if sub_in.payer_id in group_user_ids:
+        resolved_payer_id = sub_in.payer_id
+    elif sub_in.payer_id in group_row_ids:
+        resolved_payer_id = group_row_ids[sub_in.payer_id]
+    else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Payer is not a member of this group"
@@ -60,13 +63,15 @@ def create_shared_subscription(
     # Validate & resolve each member
     resolved_member_ids = []
     for u_id in sub_in.member_user_ids:
-        resolved_u = member_map.get(u_id)
-        if not resolved_u:
+        if u_id in group_user_ids:
+            resolved_member_ids.append(u_id)
+        elif u_id in group_row_ids:
+            resolved_member_ids.append(group_row_ids[u_id])
+        else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Subscription member with ID {u_id} is not a member of this group"
             )
-        resolved_member_ids.append(resolved_u)
 
     unique_member_ids = list(dict.fromkeys(resolved_member_ids))
     splits = shared_subscription_service.calculate_shared_sub_splits(
@@ -176,12 +181,15 @@ def update_shared_subscription(
     group_members = db.query(models.GroupMember).filter(
         models.GroupMember.group_id == sub.group_id
     ).all()
-    member_map = {m.user_id: m.user_id for m in group_members}
-    member_map.update({m.id: m.user_id for m in group_members})
+    group_user_ids = {m.user_id for m in group_members}
+    group_row_ids = {m.id: m.user_id for m in group_members}
 
     if sub_update.payer_id is not None:
-        resolved_payer_id = member_map.get(sub_update.payer_id)
-        if not resolved_payer_id:
+        if sub_update.payer_id in group_user_ids:
+            resolved_payer_id = sub_update.payer_id
+        elif sub_update.payer_id in group_row_ids:
+            resolved_payer_id = group_row_ids[sub_update.payer_id]
+        else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Payer is not a member of this group"
@@ -212,13 +220,15 @@ def update_shared_subscription(
         if sub_update.member_user_ids is not None:
             resolved_member_ids = []
             for u_id in sub_update.member_user_ids:
-                resolved_u = member_map.get(u_id)
-                if not resolved_u:
+                if u_id in group_user_ids:
+                    resolved_member_ids.append(u_id)
+                elif u_id in group_row_ids:
+                    resolved_member_ids.append(group_row_ids[u_id])
+                else:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail=f"Subscription member with ID {u_id} is not a member of this group"
                     )
-                resolved_member_ids.append(resolved_u)
             target_member_ids = list(dict.fromkeys(resolved_member_ids))
         else:
             target_member_ids = [m.user_id for m in sub.members]

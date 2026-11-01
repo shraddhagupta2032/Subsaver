@@ -115,7 +115,7 @@ def get_group_details(
 
     members_list = [
         schemas.GroupMemberResponse(
-            id=member.id,
+            id=user.id,
             user_id=user.id,
             name=user.name,
             email=user.email,
@@ -198,7 +198,7 @@ def add_group_member(
     db.refresh(new_member)
 
     return schemas.GroupMemberResponse(
-        id=new_member.id,
+        id=target_user.id,
         user_id=target_user.id,
         name=target_user.name,
         email=target_user.email,
@@ -239,7 +239,7 @@ def get_group_members(
 
     return [
         schemas.GroupMemberResponse(
-            id=member.id,
+            id=user.id,
             user_id=user.id,
             name=user.name,
             email=user.email,
