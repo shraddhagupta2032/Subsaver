@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import { Button } from '../../components/Button';
 import { colors } from '../../theme/colors';
 import { groupsApi } from '../../api/groups';
 import { expensesApi } from '../../api/expenses';
+import { analyticsApi } from '../../api/analytics';
 
 export const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
@@ -24,20 +26,25 @@ export const ProfileScreen = ({ navigation }) => {
 
   const [groupCount, setGroupCount] = useState(0);
   const [expenseCount, setExpenseCount] = useState(0);
+  const [settledAmount, setSettledAmount] = useState(0);
 
   useEffect(() => {
     // Load quick user stats
     const fetchStats = async () => {
       try {
-        const [groups, expenses] = await Promise.allSettled([
+        const [groups, expenses, summary] = await Promise.allSettled([
           groupsApi.getGroups(),
           expensesApi.getExpenses(),
+          analyticsApi.getFinancialSummary(),
         ]);
         if (groups.status === 'fulfilled' && Array.isArray(groups.value)) {
           setGroupCount(groups.value.length);
         }
         if (expenses.status === 'fulfilled' && Array.isArray(expenses.value)) {
           setExpenseCount(expenses.value.length);
+        }
+        if (summary.status === 'fulfilled' && summary.value) {
+          setSettledAmount(Number(summary.value.total_expense_paid || 0));
         }
       } catch (e) {
         // quiet fallback
@@ -46,7 +53,21 @@ export const ProfileScreen = ({ navigation }) => {
     fetchStats();
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      const confirmed = typeof window !== 'undefined' && window.confirm
+        ? window.confirm('Are you sure you want to log out of SubSaver?')
+        : true;
+      if (confirmed) {
+        try {
+          await logout();
+        } catch (err) {
+          console.warn('Logout error:', err);
+        }
+      }
+      return;
+    }
+
     Alert.alert('Log Out', 'Are you sure you want to log out of SubSaver?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -63,6 +84,21 @@ export const ProfileScreen = ({ navigation }) => {
     ]);
   };
 
+  const showInfo = (title, message) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.alert([title, message].filter(Boolean).join('\n\n'));
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  const formatSettled = (amt) => {
+    if (!amt || amt === 0) return '₹0';
+    if (amt >= 100000) return `₹${(amt / 100000).toFixed(1)}L`;
+    if (amt >= 1000) return `₹${(amt / 1000).toFixed(1)}k`;
+    return `₹${amt.toLocaleString('en-IN')}`;
+  };
+
   const memberYear = user?.created_at
     ? new Date(user.created_at).getFullYear()
     : '2025';
@@ -74,7 +110,7 @@ export const ProfileScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity
           style={styles.settingsBtn}
-          onPress={() => Alert.alert('Settings', 'App version: SubSaver 2.0.0')}
+          onPress={() => showInfo('Settings', 'App version: SubSaver 2.0.0')}
           activeOpacity={0.7}
         >
           <Ionicons name="settings-outline" size={20} color={colors.text} />
@@ -105,7 +141,7 @@ export const ProfileScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.editPencilBtn}
             activeOpacity={0.75}
-            onPress={() => Alert.alert('Edit Profile', 'Profile details are synced from your account.')}
+            onPress={() => showInfo('Edit Profile', 'Profile details are synced from your account.')}
           >
             <Ionicons name="pencil" size={16} color="#FFFFFF" />
           </TouchableOpacity>
@@ -114,17 +150,17 @@ export const ProfileScreen = ({ navigation }) => {
         {/* 3-Column Metrics Card */}
         <View style={styles.statsCard}>
           <View style={styles.statCol}>
-            <Text style={styles.statNumber}>{groupCount || 3}</Text>
+            <Text style={styles.statNumber}>{groupCount}</Text>
             <Text style={styles.statLabel}>Groups</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCol}>
-            <Text style={styles.statNumber}>{expenseCount || 28}</Text>
+            <Text style={styles.statNumber}>{expenseCount}</Text>
             <Text style={styles.statLabel}>Expenses</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCol}>
-            <Text style={styles.statNumber}>₹4.8k</Text>
+            <Text style={styles.statNumber}>{formatSettled(settledAmount)}</Text>
             <Text style={styles.statLabel}>Settled</Text>
           </View>
         </View>
@@ -135,7 +171,7 @@ export const ProfileScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
-            onPress={() => Alert.alert('Personal Details', `Name: ${user?.name || 'User'}\nEmail: ${user?.email || ''}`)}
+            onPress={() => showInfo('Personal Details', `Name: ${user?.name || 'User'}\nEmail: ${user?.email || ''}`)}
           >
             <View style={styles.menuItemLeft}>
               <View style={styles.menuIconBox}>
@@ -192,7 +228,7 @@ export const ProfileScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
-            onPress={() => Alert.alert('Privacy & Security', 'Your data is encrypted and securely stored.')}
+            onPress={() => showInfo('Privacy & Security', 'Your data is encrypted and securely stored.')}
           >
             <View style={styles.menuItemLeft}>
               <View style={styles.menuIconBox}>
@@ -211,7 +247,7 @@ export const ProfileScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
-            onPress={() => Alert.alert('Help & Support', 'SubSaver Support: support@subsaver.app')}
+            onPress={() => showInfo('Help & Support', 'SubSaver Support: support@subsaver.app')}
           >
             <View style={styles.menuItemLeft}>
               <View style={styles.menuIconBox}>
