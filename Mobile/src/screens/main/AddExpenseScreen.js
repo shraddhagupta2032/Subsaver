@@ -58,9 +58,9 @@ export const AddExpenseScreen = ({ route, navigation }) => {
         if (targetId) {
           const mems = await groupsApi.getGroupMembers(targetId);
           setMembers(mems || []);
-          setSelectedUserIds(mems.map((m) => m.id || m.user_id));
+          setSelectedUserIds(mems.map((m) => m.user_id || m.id));
           if (!payerId && mems.length > 0) {
-            setPayerId(mems[0].id || mems[0].user_id);
+            setPayerId(mems[0].user_id || mems[0].id);
           }
         }
       } catch (e) {
@@ -251,7 +251,7 @@ export const AddExpenseScreen = ({ route, navigation }) => {
               <Text style={styles.fieldLabel}>Paid by</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
                 {members.map((m) => {
-                  const mId = m.id || m.user_id;
+                  const mId = m.user_id || m.id;
                   const isPayer = payerId === mId;
                   const isYou = mId === user?.id;
                   return (
@@ -275,7 +275,7 @@ export const AddExpenseScreen = ({ route, navigation }) => {
               <Text style={styles.fieldLabel}>Split with ({selectedUserIds.length})</Text>
               <View style={styles.membersList}>
                 {members.map((m) => {
-                  const mId = m.id || m.user_id;
+                  const mId = m.user_id || m.id;
                   const isSelected = selectedUserIds.includes(mId);
                   const isYou = mId === user?.id;
                   return (

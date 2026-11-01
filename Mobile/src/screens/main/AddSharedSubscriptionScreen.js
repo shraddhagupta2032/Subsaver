@@ -87,7 +87,7 @@ export const AddSharedSubscriptionScreen = ({ route, navigation }) => {
         setLoadingMembers(true);
         const data = await groupsApi.getGroupMembers(selectedGroupId);
         setMembers(data || []);
-        const allIds = (data || []).map((m) => m.id);
+        const allIds = (data || []).map((m) => m.user_id || m.id);
         setSelectedMemberIds(allIds);
         if (user && allIds.includes(user.id)) {
           setPayerId(user.id);
@@ -125,7 +125,7 @@ export const AddSharedSubscriptionScreen = ({ route, navigation }) => {
     const remainderCents = Math.round((amt - baseShare * count) * 100);
 
     return selectedMemberIds.map((id, idx) => {
-      const member = members.find((m) => m.id === id);
+      const member = members.find((m) => (m.user_id || m.id) === id);
       const isExtra = idx < remainderCents;
       const share = (baseShare + (isExtra ? 0.01 : 0)).toFixed(2);
       return {
@@ -328,25 +328,28 @@ export const AddSharedSubscriptionScreen = ({ route, navigation }) => {
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupScroll}>
-              {members.map((m) => (
-                <TouchableOpacity
-                  key={m.id}
-                  style={[
-                    styles.memberChip,
-                    payerId === m.id && styles.memberChipActive,
-                  ]}
-                  onPress={() => setPayerId(m.id)}
-                >
-                  <Text
+              {members.map((m) => {
+                const memberUserId = m.user_id || m.id;
+                return (
+                  <TouchableOpacity
+                    key={memberUserId}
                     style={[
-                      styles.memberChipText,
-                      payerId === m.id && styles.memberChipTextActive,
+                      styles.memberChip,
+                      payerId === memberUserId && styles.memberChipActive,
                     ]}
+                    onPress={() => setPayerId(memberUserId)}
                   >
-                    {m.name} {m.id === user?.id ? '(You)' : ''}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.memberChipText,
+                        payerId === memberUserId && styles.memberChipTextActive,
+                      ]}
+                    >
+                      {m.name} {memberUserId === user?.id ? '(You)' : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           )}
 
@@ -356,16 +359,17 @@ export const AddSharedSubscriptionScreen = ({ route, navigation }) => {
           </Text>
           <View style={styles.memberList}>
             {members.map((m) => {
-              const isSelected = selectedMemberIds.includes(m.id);
+              const memberUserId = m.user_id || m.id;
+              const isSelected = selectedMemberIds.includes(memberUserId);
               return (
                 <TouchableOpacity
-                  key={m.id}
+                  key={memberUserId}
                   style={[styles.memberRow, isSelected && styles.memberRowSelected]}
-                  onPress={() => toggleMemberSelection(m.id)}
+                  onPress={() => toggleMemberSelection(memberUserId)}
                 >
                   <View style={styles.memberInfo}>
                     <Text style={styles.memberName}>
-                      {m.name} {m.id === user?.id ? '(You)' : ''}
+                      {m.name} {memberUserId === user?.id ? '(You)' : ''}
                     </Text>
                     <Text style={styles.memberEmail}>{m.email}</Text>
                   </View>

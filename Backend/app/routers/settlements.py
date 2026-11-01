@@ -119,7 +119,7 @@ def record_settlement(
 
     payee_membership = db.query(models.GroupMember).filter(
         models.GroupMember.group_id == group_id,
-        models.GroupMember.user_id == settlement_in.payee_id
+        (models.GroupMember.user_id == settlement_in.payee_id) | (models.GroupMember.id == settlement_in.payee_id)
     ).first()
 
     if not payee_membership:
@@ -128,10 +128,12 @@ def record_settlement(
             detail="Payee is not a member of this group"
         )
 
+    resolved_payee_id = payee_membership.user_id
+
     new_settlement = models.Settlement(
         group_id=group_id,
         payer_id=current_user.id,
-        payee_id=settlement_in.payee_id,
+        payee_id=resolved_payee_id,
         amount=settlement_in.amount,
         settlement_date=settlement_in.settlement_date or date.today(),
         payment_method=settlement_in.payment_method,

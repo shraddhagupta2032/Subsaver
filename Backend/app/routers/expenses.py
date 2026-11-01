@@ -118,33 +118,38 @@ def create_expense(
             detail="You must be a member of the group to create an expense"
         )
 
-    # 5. Get all group member IDs
+    # 5. Get all group member IDs & build lookup map
     group_members = db.query(models.GroupMember).filter(
         models.GroupMember.group_id == expense_in.group_id
     ).all()
-    group_member_user_ids = {m.user_id for m in group_members}
+    member_map = {m.user_id: m.user_id for m in group_members}
+    member_map.update({m.id: m.user_id for m in group_members})
 
     # 6. Validate payer is in group
-    if expense_in.payer_id not in group_member_user_ids:
+    resolved_payer_id = member_map.get(expense_in.payer_id)
+    if not resolved_payer_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Payer must be a member of the group"
         )
 
     # 7. Validate split members
-    unique_split_user_ids = list(dict.fromkeys(expense_in.split_user_ids))
+    resolved_split_ids = []
+    for uid in dict.fromkeys(expense_in.split_user_ids):
+        resolved_u = member_map.get(uid)
+        if not resolved_u:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Split user with ID {uid} is not a member of this group"
+            )
+        resolved_split_ids.append(resolved_u)
+
+    unique_split_user_ids = list(dict.fromkeys(resolved_split_ids))
     if not unique_split_user_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Expense must have at least one split member"
         )
-
-    for uid in unique_split_user_ids:
-        if uid not in group_member_user_ids:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Split user with ID {uid} is not a member of this group"
-            )
 
     # 8. Calculate equal splits
     calculated_splits = calculate_equal_splits(expense_in.total_amount, unique_split_user_ids)
@@ -163,7 +168,7 @@ def create_expense(
         created_by=current_user.id,
         title=title,
         total_amount=expense_in.total_amount,
-        payer_id=expense_in.payer_id,
+        payer_id=resolved_payer_id,
         expense_date=expense_in.expense_date or date.today(),
         due_date=expense_in.due_date,
         notes=expense_in.notes
