@@ -21,8 +21,9 @@ const getExpoHostUrl = () => {
   return null;
 };
 
-// Default base URL: auto-detected Expo IP, Android emulator (10.0.2.2), or localhost
+// Default base URL: Environment variable (production), auto-detected Expo IP, Android emulator, or localhost
 const DEFAULT_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
   getExpoHostUrl() ||
   (Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000');
 

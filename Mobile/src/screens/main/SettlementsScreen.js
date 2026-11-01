@@ -7,15 +7,22 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { settlementsApi } from '../../api/settlements';
-import { Card } from '../../components/Card';
-import { Button } from '../../components/Button';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { Avatar } from '../../components/Avatar';
+import { Badge } from '../../components/Badge';
 import { colors } from '../../theme/colors';
 
+const TONES = ['mint', 'peach', 'sky', 'purple'];
+
 export const SettlementsScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+
   const [balancesSummary, setBalancesSummary] = useState(null);
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +52,6 @@ export const SettlementsScreen = ({ navigation }) => {
     fetchSettlementsData();
   }, [fetchSettlementsData]);
 
-  // Re-fetch when navigating back to screen
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchSettlementsData();
@@ -60,224 +66,132 @@ export const SettlementsScreen = ({ navigation }) => {
 
   const youOweTotal = Number(balancesSummary?.total_owed || 0);
   const youAreOwedTotal = Number(balancesSummary?.total_receivable || 0);
-  const netBal = Number(balancesSummary?.net_balance || 0);
+  const netBal = Number(balancesSummary?.net_balance || (youAreOwedTotal - youOweTotal));
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Group Settlements</Text>
-          <Text style={styles.headerSubtitle}>Authoritative simplified debt balances</Text>
-        </View>
+      <View style={[styles.headerContainer, { maxWidth: isDesktop ? 680 : '100%' }]}>
+        <ScreenHeader
+          title="Payments"
+          subtitle="Clear balances, keep friendships intact."
+          back
+          onBack={() => navigation.goBack()}
+        />
       </View>
 
-      {/* Main Content */}
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Calculating group balances...</Text>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { maxWidth: isDesktop ? 680 : '100%', paddingHorizontal: isDesktop ? 24 : 16 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
+        {/* Net Balance Hero Card */}
+        <View style={styles.heroCard}>
+          <Text style={styles.heroLabel}>Net Balance</Text>
+          <Text style={styles.heroAmount}>
+            {netBal >= 0 ? '+' : '-'} ₹{Math.abs(netBal).toLocaleString('en-IN')}
+          </Text>
+          <View style={styles.heroSubRow}>
+            <Text style={styles.heroSubItem}>
+              You are owed: <Text style={{ fontWeight: '800', color: colors.mintBar }}>₹{youAreOwedTotal.toLocaleString('en-IN')}</Text>
+            </Text>
+            <Text style={styles.heroDot}>•</Text>
+            <Text style={styles.heroSubItem}>
+              You owe: <Text style={{ fontWeight: '800', color: '#FFA49C' }}>₹{youOweTotal.toLocaleString('en-IN')}</Text>
+            </Text>
+          </View>
         </View>
-      ) : (
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
-            />
-          }
-        >
-          {/* Error Banner */}
-          {error && (
-            <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-              <Text style={styles.errorBannerText}>{error}</Text>
-              <TouchableOpacity onPress={fetchSettlementsData} activeOpacity={0.7}>
-                <Text style={styles.retryText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          )}
 
-          {/* Top 3 Summary Cards */}
-          <View style={styles.summaryContainer}>
-            <View style={styles.summaryRow}>
-              <View style={[styles.summaryCard, styles.oweCard]}>
-                <View style={styles.summaryIconCircle}>
-                  <Ionicons name="arrow-up-circle" size={20} color={colors.danger} />
-                </View>
-                <Text style={styles.summaryLabel}>You Owe</Text>
-                <Text style={[styles.summaryAmount, { color: colors.danger }]}>
-                  ₹{youOweTotal.toLocaleString('en-IN')}
-                </Text>
-              </View>
-
-              <View style={[styles.summaryCard, styles.receiveCard]}>
-                <View style={styles.summaryIconCircle}>
-                  <Ionicons name="arrow-down-circle" size={20} color={colors.success} />
-                </View>
-                <Text style={styles.summaryLabel}>You Are Owed</Text>
-                <Text style={[styles.summaryAmount, { color: colors.success }]}>
-                  ₹{youAreOwedTotal.toLocaleString('en-IN')}
-                </Text>
-              </View>
-            </View>
-
-            {/* Net Balance Hero Pill */}
-            <View
-              style={[
-                styles.netBalanceBanner,
-                {
-                  backgroundColor:
-                    netBal > 0
-                      ? 'rgba(16, 185, 129, 0.12)'
-                      : netBal < 0
-                      ? colors.dangerBg
-                      : colors.surfaceLight,
-                },
-              ]}
-            >
-              <Ionicons
-                name={
-                  netBal > 0
-                    ? 'trending-up-outline'
-                    : netBal < 0
-                    ? 'trending-down-outline'
-                    : 'checkmark-circle-outline'
-                }
-                size={20}
-                color={netBal > 0 ? colors.success : netBal < 0 ? colors.danger : colors.textMuted}
-              />
-              <Text style={styles.netBalanceLabel}>Net Position:</Text>
-              <Text
-                style={[
-                  styles.netBalanceValue,
-                  {
-                    color:
-                      netBal > 0
-                        ? colors.success
-                        : netBal < 0
-                        ? colors.danger
-                        : colors.textSecondary,
-                  },
-                ]}
-              >
-                {netBal > 0 ? `+₹${netBal.toLocaleString('en-IN')}` : netBal < 0 ? `-₹${Math.abs(netBal).toLocaleString('en-IN')}` : '₹0.00 (All Settled)'}
-              </Text>
-            </View>
+        {error && (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
+            <Text style={styles.errorText}>{error}</Text>
           </View>
+        )}
 
-          {/* Individual Debts / Suggested Transfers */}
-          <View style={styles.debtsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Active Debt Settlements</Text>
-              <Text style={styles.countText}>{debts.length} pending</Text>
-            </View>
+        {/* Debts List */}
+        <Text style={styles.sectionTitle}>Pending settlements</Text>
 
-            {debts.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIconCircle}>
-                  <Ionicons name="shield-checkmark" size={48} color={colors.success} />
-                </View>
-                <Text style={styles.emptyTitle}>All Settled Up!</Text>
-                <Text style={styles.emptyDescription}>
-                  You don't owe anyone, and nobody owes you in any group. Great job keeping your balances clean!
-                </Text>
-              </View>
-            ) : (
-              debts.map((item) => {
-                const isYouOwe = item.direction === 'YOU_OWE';
-                const amt = Number(item.amount) || 0;
-
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    activeOpacity={0.7}
-                    onPress={() => navigation.navigate('SettlementDetails', { debt: item })}
-                  >
-                    <Card style={styles.debtCard}>
-                      <View style={styles.debtMainRow}>
-                        {/* Avatar / Direction Icon */}
-                        <View
-                          style={[
-                            styles.avatarCircle,
-                            {
-                              backgroundColor: isYouOwe
-                                ? colors.dangerBg
-                                : 'rgba(16, 185, 129, 0.12)',
-                            },
-                          ]}
-                        >
-                          <Ionicons
-                            name={isYouOwe ? 'arrow-forward' : 'arrow-back'}
-                            size={18}
-                            color={isYouOwe ? colors.danger : colors.success}
-                          />
-                        </View>
-
-                        {/* Title & Group Details */}
-                        <View style={styles.debtDetails}>
-                          <Text style={styles.debtTitle}>
-                            {isYouOwe
-                              ? `You owe ${item.other_user_name}`
-                              : `${item.other_user_name} owes you`}
-                          </Text>
-                          <View style={styles.groupBadgeRow}>
-                            <Ionicons name="people-outline" size={12} color={colors.textMuted} />
-                            <Text style={styles.groupNameText}>{item.group_name}</Text>
-                          </View>
-                        </View>
-
-                        {/* Amount & Action Button */}
-                        <View style={styles.debtAmountCol}>
-                          <Text
-                            style={[
-                              styles.debtAmount,
-                              { color: isYouOwe ? colors.danger : colors.success },
-                            ]}
-                          >
-                            ₹{amt.toLocaleString('en-IN')}
-                          </Text>
-                          <View
-                            style={[
-                              styles.actionPill,
-                              {
-                                backgroundColor: isYouOwe ? colors.primary : colors.surfaceLight,
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.actionPillText,
-                                { color: isYouOwe ? colors.surface : colors.textSecondary },
-                              ]}
-                            >
-                              {isYouOwe ? 'Settle →' : 'Details →'}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    </Card>
-                  </TouchableOpacity>
-                );
-              })
-            )}
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Calculating simplified debts...</Text>
           </View>
+        ) : debts.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="checkmark-done-circle" size={36} color={colors.primary} />
+            </View>
+            <Text style={styles.emptyTitle}>All Settled Up!</Text>
+            <Text style={styles.emptySub}>
+              You don't owe anyone and no one owes you in any group.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.debtsContainer}>
+            {debts.map((item, idx) => {
+              const isReceive = item.type === 'RECEIVABLE' || Number(item.amount_owed) > 0;
+              const tone = TONES[idx % TONES.length];
+              const isLast = idx === debts.length - 1;
 
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      )}
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.debtItem, !isLast && styles.debtBorder]}
+                  activeOpacity={0.75}
+                  onPress={() =>
+                    navigation.navigate('SettlementDetails', {
+                      counterpartyName: item.other_user_name || item.name,
+                      amount: Math.abs(Number(item.amount_owed || item.amount || 0)),
+                      isReceive,
+                      groupId: item.group_id,
+                    })
+                  }
+                >
+                  <Avatar name={item.other_user_name || item.name || 'Member'} tone={tone} />
+
+                  <View style={styles.debtInfo}>
+                    <Text style={styles.debtName} numberOfLines={1}>
+                      {item.other_user_name || item.name}
+                    </Text>
+                    <Text style={styles.debtDetail} numberOfLines={1}>
+                      {isReceive ? 'owes you' : 'you owe'} {item.group_name ? `in ${item.group_name}` : ''}
+                    </Text>
+                  </View>
+
+                  <View style={styles.debtAmountCol}>
+                    <Text
+                      style={[
+                        styles.debtAmount,
+                        { color: isReceive ? colors.primary : colors.danger },
+                      ]}
+                    >
+                      {isReceive ? '+' : '-'} ₹{Math.abs(Number(item.amount_owed || item.amount || 0)).toLocaleString('en-IN')}
+                    </Text>
+                    <Badge
+                      text={isReceive ? 'To Collect' : 'To Pay'}
+                      variant={isReceive ? 'success' : 'danger'}
+                      size="small"
+                    />
+                  </View>
+
+                  <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -287,224 +201,161 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 6,
-    marginRight: 10,
-  },
-  headerTitleContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: colors.textMuted,
+    width: '100%',
+    alignSelf: 'center',
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingBottom: 110,
+    width: '100%',
+    alignSelf: 'center',
   },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.dangerBg,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 16,
+  heroCard: {
+    backgroundColor: colors.primaryDark,
+    borderRadius: 22,
+    padding: 20,
+    marginVertical: 12,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 4,
   },
-  errorBannerText: {
-    flex: 1,
-    color: colors.danger,
-    fontSize: 13,
-    marginLeft: 8,
-  },
-  retryText: {
-    color: colors.danger,
-    fontWeight: '600',
-    fontSize: 13,
-    marginLeft: 8,
-  },
-  summaryContainer: {
-    marginBottom: 20,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginHorizontal: 3,
-  },
-  oweCard: {
-    borderLeftWidth: 3,
-    borderLeftColor: colors.danger,
-  },
-  receiveCard: {
-    borderLeftWidth: 3,
-    borderLeftColor: colors.success,
-  },
-  summaryIconCircle: {
-    marginBottom: 6,
-  },
-  summaryLabel: {
-    fontSize: 11,
-    color: colors.textMuted,
-    fontWeight: '500',
-  },
-  summaryAmount: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  netBalanceBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
-    marginHorizontal: 3,
-  },
-  netBalanceLabel: {
+  heroLabel: {
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
-    marginLeft: 8,
-    marginRight: 6,
+    marginBottom: 4,
   },
-  netBalanceValue: {
-    fontSize: 14,
+  heroAmount: {
+    color: '#FFFFFF',
+    fontSize: 32,
     fontWeight: '800',
+    letterSpacing: -0.8,
+    marginBottom: 8,
   },
-  debtsSection: {
-    marginTop: 4,
-  },
-  sectionHeader: {
+  heroSubRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 2,
+    gap: 8,
+  },
+  heroSubItem: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
+  },
+  heroDot: {
+    color: 'rgba(255, 255, 255, 0.4)',
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
+    letterSpacing: -0.3,
+    marginBottom: 10,
+    marginLeft: 4,
   },
-  countText: {
-    fontSize: 12,
-    color: colors.textMuted,
+  debtsContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  debtCard: {
-    marginBottom: 12,
-    padding: 14,
-  },
-  debtMainRow: {
+  debtItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 14,
   },
-  avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+  debtBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
   },
-  debtDetails: {
+  debtInfo: {
     flex: 1,
+    marginLeft: 12,
+    marginRight: 10,
   },
-  debtTitle: {
+  debtName: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  groupBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  groupNameText: {
+  debtDetail: {
     fontSize: 12,
-    color: colors.textMuted,
-    marginLeft: 4,
+    color: colors.textSecondary,
   },
   debtAmountCol: {
     alignItems: 'flex-end',
+    gap: 4,
   },
   debtAmount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
-    marginBottom: 4,
+    letterSpacing: -0.3,
   },
-  actionPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  actionPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  emptyState: {
+  emptyCard: {
     backgroundColor: colors.surface,
-    padding: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginTop: 10,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.border,
+    paddingVertical: 44,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 10,
   },
   emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  emptyDescription: {
+  emptySub: {
     fontSize: 13,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
+    maxWidth: 280,
+  },
+  loadingBox: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginTop: 10,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.dangerBg,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    marginLeft: 8,
   },
 });
-
-export default SettlementsScreen;

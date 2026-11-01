@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,45 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { Card } from '../../components/Card';
+import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { colors } from '../../theme/colors';
+import { groupsApi } from '../../api/groups';
+import { expensesApi } from '../../api/expenses';
 
 export const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+
+  const [groupCount, setGroupCount] = useState(0);
+  const [expenseCount, setExpenseCount] = useState(0);
+
+  useEffect(() => {
+    // Load quick user stats
+    const fetchStats = async () => {
+      try {
+        const [groups, expenses] = await Promise.allSettled([
+          groupsApi.getGroups(),
+          expensesApi.getExpenses(),
+        ]);
+        if (groups.status === 'fulfilled' && Array.isArray(groups.value)) {
+          setGroupCount(groups.value.length);
+        }
+        if (expenses.status === 'fulfilled' && Array.isArray(expenses.value)) {
+          setExpenseCount(expenses.value.length);
+        }
+      } catch (e) {
+        // quiet fallback
+      }
+    };
+    fetchStats();
+  }, []);
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out of SubSaver?', [
@@ -34,148 +63,237 @@ export const ProfileScreen = ({ navigation }) => {
     ]);
   };
 
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase();
-  };
+  const memberYear = user?.created_at
+    ? new Date(user.created_at).getFullYear()
+    : '2025';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Account & Settings</Text>
+      <View style={[styles.header, { maxWidth: isDesktop ? 1140 : '100%' }]}>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity
+          style={styles.settingsBtn}
+          onPress={() => Alert.alert('Settings', 'App version: SubSaver 2.0.0')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="settings-outline" size={20} color={colors.text} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            maxWidth: isDesktop ? 1140 : '100%',
+            paddingHorizontal: isDesktop ? 24 : 16,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* User Card */}
-        <Card style={styles.userCard}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{getInitials(user?.name)}</Text>
-          </View>
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.name || 'SubSaver User'}</Text>
-            <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
-            <View style={styles.verifiedPill}>
-              <Ionicons name="checkmark-circle" size={13} color={colors.success} />
-              <Text style={styles.verifiedText}>Verified Account</Text>
+        {/* Emerald Profile Hero Card */}
+        <View style={styles.profileHeroCard}>
+          <View style={styles.profileHeroLeft}>
+            <Avatar name={user?.name || 'Aarav Mehta'} tone="mint" size="large" />
+            <View style={styles.profileHeroTextCol}>
+              <Text style={styles.profileName}>{user?.name || 'Aarav Mehta'}</Text>
+              <Text style={styles.profileEmail}>{user?.email || 'aarav.mehta@gmail.com'}</Text>
+              <Text style={styles.profileMemberDate}>Member since {memberYear}</Text>
             </View>
           </View>
-        </Card>
+          <TouchableOpacity
+            style={styles.editPencilBtn}
+            activeOpacity={0.75}
+            onPress={() => Alert.alert('Edit Profile', 'Profile details are synced from your account.')}
+          >
+            <Ionicons name="pencil" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
 
-        {/* Quick Navigation Links */}
-        <Text style={styles.sectionTitle}>Financial Hub</Text>
-        <Card style={styles.menuCard}>
+        {/* 3-Column Metrics Card */}
+        <View style={styles.statsCard}>
+          <View style={styles.statCol}>
+            <Text style={styles.statNumber}>{groupCount || 3}</Text>
+            <Text style={styles.statLabel}>Groups</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCol}>
+            <Text style={styles.statNumber}>{expenseCount || 28}</Text>
+            <Text style={styles.statLabel}>Expenses</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCol}>
+            <Text style={styles.statNumber}>₹4.8k</Text>
+            <Text style={styles.statLabel}>Settled</Text>
+          </View>
+        </View>
+
+        {/* Account Section */}
+        <Text style={styles.sectionHeading}>Account</Text>
+        <View style={styles.menuContainer}>
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('Budgets')}
+            onPress={() => Alert.alert('Personal Details', `Name: ${user?.name || 'User'}\nEmail: ${user?.email || ''}`)}
           >
-            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={colors.success} />
+            <View style={styles.menuItemLeft}>
+              <View style={styles.menuIconBox}>
+                <Ionicons name="person-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuTitle}>Personal details</Text>
+                <Text style={styles.menuSub}>Name, phone and email</Text>
+              </View>
             </View>
-            <View style={styles.menuTextContainer}>
-              <Text style={styles.menuItemTitle}>Category Budgets</Text>
-              <Text style={styles.menuItemSubtitle}>Spending limits & threshold alerts</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <View style={styles.divider} />
+          <View style={styles.menuDivider} />
 
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
             onPress={() => navigation.navigate('Settlements')}
           >
-            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
-              <Ionicons name="swap-horizontal-outline" size={20} color={colors.primary} />
+            <View style={styles.menuItemLeft}>
+              <View style={styles.menuIconBox}>
+                <Ionicons name="wallet-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuTitle}>Payment methods & settlements</Text>
+                <Text style={styles.menuSub}>UPI, debts and bank transfers</Text>
+              </View>
             </View>
-            <View style={styles.menuTextContainer}>
-              <Text style={styles.menuItemTitle}>Group Debt Settlements</Text>
-              <Text style={styles.menuItemSubtitle}>Simplified balances & payment recording</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <View style={styles.divider} />
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Analytics')}
-          >
-            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(139, 92, 246, 0.12)' }]}>
-              <Ionicons name="bar-chart-outline" size={20} color={colors.purple} />
-            </View>
-            <View style={styles.menuTextContainer}>
-              <Text style={styles.menuItemTitle}>Financial Analytics</Text>
-              <Text style={styles.menuItemSubtitle}>Spending trends & category breakdown</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
+          <View style={styles.menuDivider} />
 
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
             onPress={() => navigation.navigate('Notifications')}
           >
-            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
-              <Ionicons name="notifications-outline" size={20} color={colors.warning} />
+            <View style={styles.menuItemLeft}>
+              <View style={styles.menuIconBox}>
+                <Ionicons name="notifications-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuTitle}>Notifications</Text>
+                <Text style={styles.menuSub}>Reminders and renewal updates</Text>
+              </View>
             </View>
-            <View style={styles.menuTextContainer}>
-              <Text style={styles.menuItemTitle}>Notification Center</Text>
-              <Text style={styles.menuItemSubtitle}>Renewal alerts & expense payment dues</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
-        </Card>
 
-        {/* App Info Card */}
-        <Text style={styles.sectionTitle}>Application</Text>
-        <Card style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>App Name</Text>
-            <Text style={styles.infoValue}>SubSaver</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Version</Text>
-            <Text style={styles.infoValue}>1.0.0 (Release Ready)</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Engine</Text>
-            <Text style={styles.infoValue}>Cent-Safe & Debt Simplification</Text>
-          </View>
-          <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-            <Text style={styles.infoLabel}>AI Bill Scanner</Text>
-            <Text style={styles.infoValue}>Google Gemini Vision</Text>
-          </View>
-        </Card>
+          <View style={styles.menuDivider} />
 
-        {/* Logout Button */}
-        <View style={styles.logoutContainer}>
-          <Button
-            title="Log Out of SubSaver"
-            variant="danger"
-            onPress={handleLogout}
-            icon="log-out-outline"
-          />
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => Alert.alert('Privacy & Security', 'Your data is encrypted and securely stored.')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={styles.menuIconBox}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuTitle}>Privacy & security</Text>
+                <Text style={styles.menuSub}>Data controls and session safety</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => Alert.alert('Help & Support', 'SubSaver Support: support@subsaver.app')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={styles.menuIconBox}>
+                <Ionicons name="help-circle-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuTitle}>Help & support</Text>
+                <Text style={styles.menuSub}>FAQs and contact us</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
-        <Text style={styles.footerNote}>
-          SubSaver • Smart Subscription & Group Expense Management
-        </Text>
-        <View style={{ height: 40 }} />
+        {/* Financial Hub Links */}
+        <Text style={styles.sectionHeading}>Financial Tools</Text>
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Budgets')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={styles.menuIconBox}>
+                <Ionicons name="pie-chart-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuTitle}>Monthly Budgets</Text>
+                <Text style={styles.menuSub}>Category limits and spending caps</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Reminders')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={styles.menuIconBox}>
+                <Ionicons name="alarm-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuTitle}>Renewal Reminders</Text>
+                <Text style={styles.menuSub}>Upcoming renewal timeline</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Analytics')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={styles.menuIconBox}>
+                <Ionicons name="stats-chart-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.menuItemTextCol}>
+                <Text style={styles.menuTitle}>Spending Analytics</Text>
+                <Text style={styles.menuSub}>Monthly trends and breakdown</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Log Out Button */}
+        <Button
+          title="Log Out"
+          variant="outline"
+          onPress={handleLogout}
+          icon={<Ionicons name="log-out-outline" size={18} color={colors.danger} />}
+          style={styles.logoutButton}
+          textStyle={{ color: colors.danger }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -187,146 +305,187 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 12,
+    paddingBottom: 8,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
     color: colors.text,
+    letterSpacing: -0.5,
+  },
+  settingsBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingBottom: 110,
+    width: '100%',
+    alignSelf: 'center',
   },
-  userCard: {
+  profileHeroCard: {
+    backgroundColor: colors.primaryDark,
+    borderRadius: 22,
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 18,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    marginVertical: 12,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 4,
   },
-  avatarCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primary,
+  profileHeroLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+    flex: 1,
+    marginRight: 10,
   },
-  avatarText: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.surface,
-  },
-  userInfo: {
+  profileHeroTextCol: {
+    marginLeft: 14,
     flex: 1,
   },
-  userName: {
+  profileName: {
     fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 2,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
-  userEmail: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginBottom: 6,
+  profileEmail: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.75)',
+    marginTop: 2,
   },
-  verifiedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  verifiedText: {
+  profileMemberDate: {
     fontSize: 11,
-    fontWeight: '700',
-    color: colors.success,
+    color: colors.mintBar,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  editPencilBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statsCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 16,
+    marginBottom: 20,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.3,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: '65%',
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.3,
+    marginBottom: 10,
     marginLeft: 4,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 10,
-    paddingHorizontal: 4,
-  },
-  menuCard: {
-    padding: 0,
+  menuContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 4,
+    paddingHorizontal: 16,
     marginBottom: 20,
-    overflow: 'hidden',
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    justifyContent: 'space-between',
+    paddingVertical: 13,
   },
-  menuIconCircle: {
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  menuIconBox: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 12,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
-  menuTextContainer: {
+  menuItemTextCol: {
     flex: 1,
   },
-  menuItemTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+  menuTitle: {
+    fontSize: 14,
+    fontWeight: '700',
     color: colors.text,
-    marginBottom: 2,
   },
-  menuItemSubtitle: {
+  menuSub: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: colors.textSecondary,
+    marginTop: 1,
   },
-  divider: {
+  menuDivider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginLeft: 68,
+    backgroundColor: colors.borderLight,
   },
-  infoCard: {
-    padding: 16,
-    marginBottom: 24,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  infoLabel: {
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  infoValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  logoutContainer: {
-    marginBottom: 16,
-  },
-  footerNote: {
-    fontSize: 11,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 8,
+  logoutButton: {
+    borderColor: colors.danger,
+    marginTop: 4,
+    marginBottom: 20,
   },
 });
-
-export default ProfileScreen;

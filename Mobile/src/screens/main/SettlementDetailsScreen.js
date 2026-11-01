@@ -8,40 +8,35 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { settlementsApi } from '../../api/settlements';
-import { Input } from '../../components/Input';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { Avatar } from '../../components/Avatar';
+import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
-import { Card } from '../../components/Card';
+import { Input } from '../../components/Input';
 import { colors } from '../../theme/colors';
 
 const PAYMENT_METHODS = ['UPI', 'CASH', 'BANK_TRANSFER', 'OTHER'];
 
 export const SettlementDetailsScreen = ({ route, navigation }) => {
-  const { debt } = route.params || {};
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+  const { debt, counterpartyName, amount: propAmount, isReceive, groupId } = route.params || {};
 
-  const isYouOwe = debt?.direction === 'YOU_OWE';
-  const initialAmount = debt?.amount ? String(debt.amount) : '0';
+  const name = counterpartyName || debt?.other_user_name || 'Member';
+  const rawAmt = propAmount !== undefined ? propAmount : (debt?.amount || 0);
+  const directionIsReceive = isReceive !== undefined ? isReceive : (debt?.direction !== 'YOU_OWE');
 
-  const [amount, setAmount] = useState(initialAmount);
+  const [settled, setSettled] = useState(false);
+  const [amount, setAmount] = useState(String(rawAmt || '0'));
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState(null);
-
-  if (!debt) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorCenter}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.danger} />
-          <Text style={styles.errorTitle}>Debt Information Missing</Text>
-          <Button title="Go Back" onPress={() => navigation.goBack()} />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   const handleRecordSettlement = async () => {
     const payAmt = parseFloat(amount);
@@ -54,18 +49,21 @@ export const SettlementDetailsScreen = ({ route, navigation }) => {
       setLoading(true);
       setServerError(null);
 
-      const payload = {
-        payee_id: isYouOwe ? debt.to_user_id : debt.from_user_id,
-        amount: payAmt.toFixed(2),
-        payment_method: paymentMethod,
-        notes: notes.trim() || undefined,
-      };
+      const targetGroupId = groupId || debt?.group_id;
+      if (targetGroupId) {
+        const payload = {
+          payee_id: directionIsReceive ? (debt?.to_user_id || debt?.other_user_id) : (debt?.from_user_id || debt?.other_user_id),
+          amount: payAmt.toFixed(2),
+          payment_method: paymentMethod,
+          notes: notes.trim() || undefined,
+        };
+        await settlementsApi.recordSettlement(targetGroupId, payload);
+      }
 
-      await settlementsApi.recordSettlement(debt.group_id, payload);
-
+      setSettled(true);
       Alert.alert(
         'Settlement Recorded',
-        `Successfully recorded payment of ₹${payAmt.toLocaleString('en-IN')} to ${debt.other_user_name}!`,
+        `Successfully recorded settlement of ₹${payAmt.toLocaleString('en-IN')} with ${name}!`,
         [
           {
             text: 'OK',
@@ -87,192 +85,90 @@ export const SettlementDetailsScreen = ({ route, navigation }) => {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Settlement Details</Text>
+        <View style={[styles.headerContainer, { maxWidth: isDesktop ? 680 : '100%' }]}>
+          <ScreenHeader
+            title="Settlement details"
+            back
+            onBack={() => navigation.goBack()}
+          />
         </View>
 
         <ScrollView
           style={styles.content}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            styles.scrollContent,
+            { maxWidth: isDesktop ? 680 : '100%', paddingHorizontal: isDesktop ? 24 : 16 },
+          ]}
           showsVerticalScrollIndicator={false}
         >
+          {/* Settle Hero (from Figma settle-hero) */}
+          <View style={styles.settleHeroCard}>
+            <Avatar name={name} size="large" tone={directionIsReceive ? 'mint' : 'sky'} />
+            <Text style={styles.settleHeroLabel}>
+              {directionIsReceive ? `${name} owes you` : `You owe ${name}`}
+            </Text>
+            <Text style={styles.settleHeroAmount}>
+              ₹{Number(settled ? 0 : amount).toLocaleString('en-IN')}
+            </Text>
+            <Badge
+              text={settled ? 'Paid & Settled' : 'Payment Pending'}
+              variant={settled ? 'success' : directionIsReceive ? 'warning' : 'danger'}
+            />
+          </View>
+
           {serverError && (
-            <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-              <Text style={styles.errorBannerText}>{serverError}</Text>
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
+              <Text style={styles.errorText}>{serverError}</Text>
             </View>
           )}
 
-          {/* Hero Direction Card */}
-          <Card
-            style={[
-              styles.heroCard,
-              { borderColor: isYouOwe ? colors.danger : colors.success },
-            ]}
-          >
-            <View
-              style={[
-                styles.heroIconBadge,
-                {
-                  backgroundColor: isYouOwe
-                    ? colors.dangerBg
-                    : 'rgba(16, 185, 129, 0.12)',
-                },
-              ]}
-            >
-              <Ionicons
-                name={isYouOwe ? 'arrow-up-circle' : 'arrow-down-circle'}
-                size={32}
-                color={isYouOwe ? colors.danger : colors.success}
-              />
+          {/* Settlement Form Card */}
+          <View style={styles.formCard}>
+            <Text style={styles.formCardTitle}>Record Payment</Text>
+
+            <Input
+              label="Settlement Amount (₹)"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+              icon="cash-outline"
+            />
+
+            <Text style={styles.fieldLabel}>Payment Method</Text>
+            <View style={styles.methodRow}>
+              {PAYMENT_METHODS.map((m) => {
+                const isSelected = paymentMethod === m;
+                return (
+                  <TouchableOpacity
+                    key={m}
+                    style={[styles.methodChip, isSelected && styles.methodChipActive]}
+                    onPress={() => setPaymentMethod(m)}
+                  >
+                    <Text style={[styles.methodChipText, isSelected && styles.methodChipTextActive]}>
+                      {m.replace('_', ' ')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            <Text style={styles.heroDirectionLabel}>
-              {isYouOwe ? 'You Owe' : 'Owed to You'}
-            </Text>
-            <Text
-              style={[
-                styles.heroAmount,
-                { color: isYouOwe ? colors.danger : colors.success },
-              ]}
-            >
-              ₹{Number(debt.amount).toLocaleString('en-IN')}
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              {isYouOwe
-                ? `Pay ${debt.other_user_name} to clear this balance`
-                : `Awaiting settlement from ${debt.other_user_name}`}
-            </Text>
-          </Card>
 
-          {/* Transaction Summary Card */}
-          <Card style={styles.infoCard}>
-            <Text style={styles.cardSectionTitle}>Transaction Details</Text>
+            <Input
+              label="Notes (Optional)"
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="e.g. Sent via GPay, Cash handed over"
+              icon="document-text-outline"
+            />
 
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Counterparty</Text>
-              <Text style={styles.infoValue}>{debt.other_user_name}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Group</Text>
-              <Text style={styles.infoValue}>{debt.group_name}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Calculated By</Text>
-              <Text style={styles.infoValue}>SubSaver Cent-Safe Split Engine</Text>
-            </View>
-            <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-              <Text style={styles.infoLabel}>Status</Text>
-              <View
-                style={[
-                  styles.statusTag,
-                  {
-                    backgroundColor: isYouOwe
-                      ? colors.dangerBg
-                      : 'rgba(16, 185, 129, 0.12)',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusTagText,
-                    { color: isYouOwe ? colors.danger : colors.success },
-                  ]}
-                >
-                  {isYouOwe ? 'UNSETTLED (YOU OWE)' : 'RECEIVABLE'}
-                </Text>
-              </View>
-            </View>
-          </Card>
-
-          {/* Settlement Action Card */}
-          {isYouOwe ? (
-            <Card style={styles.formCard}>
-              <Text style={styles.cardSectionTitle}>Record Settlement Payment</Text>
-              <Text style={styles.formSubtitle}>
-                Once you have transferred the money (via UPI, Bank, or Cash), submit this payment record to clear your balance.
-              </Text>
-
-              {/* Amount Input */}
-              <Input
-                label="Payment Amount (₹) *"
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="numeric"
-                icon="wallet-outline"
-              />
-
-              {/* Payment Method Selector */}
-              <Text style={styles.methodLabel}>Payment Method</Text>
-              <View style={styles.methodsRow}>
-                {PAYMENT_METHODS.map((m) => {
-                  const isSelected = paymentMethod === m;
-                  return (
-                    <TouchableOpacity
-                      key={m}
-                      style={[styles.methodChip, isSelected && styles.methodChipActive]}
-                      onPress={() => setPaymentMethod(m)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={[
-                          styles.methodChipText,
-                          isSelected && styles.methodChipTextActive,
-                        ]}
-                      >
-                        {m}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Optional Notes */}
-              <Input
-                label="Notes / Transaction ID (Optional)"
-                placeholder="e.g. Paid via GPay, UPI Ref 123456"
-                value={notes}
-                onChangeText={setNotes}
-                icon="document-text-outline"
-              />
-
-              <Button
-                title={`Confirm Payment of ₹${Number(amount || 0).toLocaleString('en-IN')}`}
-                onPress={handleRecordSettlement}
-                loading={loading}
-                style={styles.payButton}
-              />
-            </Card>
-          ) : (
-            <Card style={styles.formCard}>
-              <View style={styles.receivedNoticeRow}>
-                <Ionicons name="information-circle-outline" size={24} color={colors.info} />
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={styles.receivedNoticeTitle}>Receiving Money</Text>
-                  <Text style={styles.receivedNoticeText}>
-                    {debt.other_user_name} has been notified of this pending amount in {debt.group_name}. When they pay, the balance will automatically update.
-                  </Text>
-                </View>
-              </View>
-
-              <Button
-                title="Back to Settlements"
-                variant="outline"
-                onPress={() => navigation.goBack()}
-                style={{ marginTop: 14 }}
-              />
-            </Card>
-          )}
-
-          <View style={{ height: 40 }} />
+            <Button
+              title={settled ? 'Settled' : 'Mark as settled'}
+              onPress={handleRecordSettlement}
+              loading={loading}
+              disabled={settled}
+              style={{ marginTop: 8 }}
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -284,189 +180,111 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 6,
-    marginRight: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
+    width: '100%',
+    alignSelf: 'center',
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingBottom: 110,
+    width: '100%',
+    alignSelf: 'center',
   },
-  errorCenter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  settleHeroCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: 24,
+    alignItems: 'center',
+    marginVertical: 12,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 3,
   },
-  errorTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.danger,
+  settleHeroLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '600',
     marginTop: 12,
-    marginBottom: 20,
+    marginBottom: 4,
   },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.dangerBg,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 16,
-  },
-  errorBannerText: {
-    flex: 1,
-    color: colors.danger,
-    fontSize: 13,
-    marginLeft: 8,
-  },
-  heroCard: {
-    alignItems: 'center',
-    padding: 24,
-    marginBottom: 16,
-    borderWidth: 1.5,
-  },
-  heroIconBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
+  settleHeroAmount: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.6,
     marginBottom: 10,
   },
-  heroDirectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  heroAmount: {
-    fontSize: 32,
-    fontWeight: '800',
-    marginVertical: 4,
-  },
-  heroSubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  infoCard: {
-    padding: 16,
-    marginBottom: 16,
-  },
-  cardSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  infoLabel: {
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  statusTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
   formCard: {
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 20,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+    marginTop: 8,
   },
-  formSubtitle: {
-    fontSize: 12,
-    color: colors.textMuted,
-    lineHeight: 18,
+  formCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.text,
     marginBottom: 16,
+    letterSpacing: -0.3,
   },
-  methodLabel: {
+  fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
+    color: colors.textSecondary,
     marginBottom: 8,
   },
-  methodsRow: {
+  methodRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 16,
   },
   methodChip: {
-    backgroundColor: colors.surfaceLight,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
-    marginRight: 8,
-    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 1,
     borderColor: colors.border,
   },
   methodChipActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primarySoft,
     borderColor: colors.primary,
   },
   methodChipText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.textSecondary,
   },
   methodChipTextActive: {
-    color: colors.surface,
+    color: colors.primary,
   },
-  payButton: {
-    marginTop: 8,
-  },
-  receivedNoticeRow: {
+  errorBox: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: colors.surfaceLight,
-    padding: 14,
-    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: colors.dangerBg,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
   },
-  receivedNoticeTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  receivedNoticeText: {
-    fontSize: 12,
-    color: colors.textMuted,
-    lineHeight: 18,
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    marginLeft: 8,
+    flex: 1,
   },
 });
-
-export default SettlementDetailsScreen;

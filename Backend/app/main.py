@@ -53,7 +53,11 @@ app.include_router(subscription_intelligence.router)
 
 @app.get("/")
 def root():
-    return {"message": "SubSaver Backend is running!"}
+    return {"message": "SubSaver Backend is running!", "status": "online"}
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
 
 
 @app.get("/db-test")
@@ -123,4 +127,4 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
 
 @app.get("/me", response_model=schemas.UserResponse)
 def read_current_user(current_user: models.User = Depends(get_current_user)):
-    return current_user
+    return current_user

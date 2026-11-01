@@ -13,6 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { notificationsApi } from '../../api/notifications';
 import { Card } from '../../components/Card';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { Badge } from '../../components/Badge';
+import { EmptyState } from '../../components/EmptyState';
 import { colors } from '../../theme/colors';
 
 export const RemindersScreen = ({ navigation }) => {
@@ -127,140 +130,131 @@ export const RemindersScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Upcoming Reminders</Text>
-        <TouchableOpacity
-          style={styles.syncButton}
-          onPress={handleSyncReminders}
-          disabled={syncing}
-        >
-          {syncing ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Ionicons name="refresh-outline" size={22} color={colors.primary} />
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {error && (
-        <View style={styles.errorBox}>
-          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchReminders}>
-            <Text style={styles.retryBtnText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {loading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Checking upcoming deadlines...</Text>
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.content}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
-            />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
+        <ScreenHeader
+          title="Upcoming Reminders"
+          subtitle="Renewal dates & payment deadlines"
+          back
+          onBack={() => navigation.goBack()}
+          action={
+            <TouchableOpacity
+              style={styles.syncButton}
+              onPress={handleSyncReminders}
+              disabled={syncing}
+            >
+              {syncing ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="refresh-outline" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
           }
-        >
-          {groupedSections.length > 0 ? (
-            groupedSections.map((sec, idx) => (
-              <View key={idx} style={styles.sectionContainer}>
-                <View style={styles.sectionHeaderRow}>
-                  <Text
-                    style={[
-                      styles.sectionTitle,
-                      sec.title === 'OVERDUE' && { color: colors.danger },
-                      sec.title === 'TODAY' && { color: colors.warning },
-                    ]}
-                  >
-                    {sec.title}
-                  </Text>
-                  <View style={styles.sectionBadge}>
-                    <Text style={styles.sectionBadgeText}>{sec.items.length}</Text>
-                  </View>
+        />
+
+        {error && (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={fetchReminders}>
+              <Text style={styles.retryBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {loading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Checking upcoming deadlines...</Text>
+          </View>
+        ) : groupedSections.length > 0 ? (
+          groupedSections.map((sec, idx) => (
+            <View key={idx} style={styles.sectionContainer}>
+              <View style={styles.sectionHeaderRow}>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    sec.title === 'OVERDUE' && { color: colors.danger },
+                    sec.title === 'TODAY' && { color: colors.warning },
+                  ]}
+                >
+                  {sec.title}
+                </Text>
+                <View style={styles.sectionBadge}>
+                  <Text style={styles.sectionBadgeText}>{sec.items.length}</Text>
                 </View>
-
-                {sec.items.map((item) => {
-                  const isSub = item.reminder_type === 'SUBSCRIPTION_RENEWAL';
-                  const amount = isSub
-                    ? item.subscription?.amount
-                    : item.expense_split?.amount_owed;
-
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={styles.reminderCard}
-                      activeOpacity={0.7}
-                      onPress={() => handleItemPress(item)}
-                    >
-                      <View style={styles.cardLeft}>
-                        <View
-                          style={[
-                            styles.iconBox,
-                            {
-                              backgroundColor: isSub
-                                ? 'rgba(59, 130, 246, 0.12)'
-                                : colors.dangerBg,
-                            },
-                          ]}
-                        >
-                          <Ionicons
-                            name={isSub ? 'calendar-outline' : 'cash-outline'}
-                            size={20}
-                            color={isSub ? colors.primary : colors.danger}
-                          />
-                        </View>
-                        <View style={styles.infoCol}>
-                          <Text style={styles.itemTitle}>{item.title}</Text>
-                          <Text style={styles.itemSubtitle}>
-                            {isSub
-                              ? `${item.subscription?.category || 'Subscription'} • ${item.subscription?.billing_cycle?.toLowerCase() || 'monthly'}`
-                              : `Group: ${item.expense_split?.expense?.group_name || 'Group Expense'}`}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.cardRight}>
-                        {amount !== undefined && amount !== null && (
-                          <Text style={styles.itemAmount}>
-                            ₹{Number(amount).toFixed(2)}
-                          </Text>
-                        )}
-                        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
               </View>
-            ))
-          ) : (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconCircle}>
-                <Ionicons name="checkmark-done-circle-outline" size={48} color={colors.success} />
-              </View>
-              <Text style={styles.emptyTitle}>No upcoming reminders</Text>
-              <Text style={styles.emptySubtitle}>
-                You have no pending subscription renewals or expense payment deadlines in the next 30 days.
-              </Text>
+
+              {sec.items.map((item) => {
+                const isSub = item.reminder_type === 'SUBSCRIPTION_RENEWAL';
+                const amount = isSub
+                  ? item.subscription?.amount
+                  : item.expense_split?.amount_owed;
+
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.reminderCard}
+                    activeOpacity={0.7}
+                    onPress={() => handleItemPress(item)}
+                  >
+                    <View style={styles.cardLeft}>
+                      <View
+                        style={[
+                          styles.iconBox,
+                          {
+                            backgroundColor: isSub
+                              ? colors.primarySoft
+                              : colors.dangerBg,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={isSub ? 'calendar-outline' : 'cash-outline'}
+                          size={20}
+                          color={isSub ? colors.primary : colors.danger}
+                        />
+                      </View>
+                      <View style={styles.infoCol}>
+                        <Text style={styles.itemTitle}>{item.title}</Text>
+                        <Text style={styles.itemSubtitle}>
+                          {isSub
+                            ? `${item.subscription?.category || 'Subscription'} • ${item.subscription?.billing_cycle?.toLowerCase() || 'monthly'}`
+                            : `Group: ${item.expense_split?.expense?.group_name || 'Group Expense'}`}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardRight}>
+                      {amount !== undefined && amount !== null && (
+                        <Text style={styles.itemAmount}>
+                          ₹{Number(amount).toFixed(2)}
+                        </Text>
+                      )}
+                      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          )}
-        </ScrollView>
-      )}
+          ))
+        ) : (
+          <EmptyState
+            icon="calendar-outline"
+            title="No upcoming reminders"
+            message="You have no pending subscription renewals or expense payment deadlines in the next 30 days."
+          />
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -270,29 +264,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
   syncButton: {
-    padding: 4,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     padding: 16,
     paddingBottom: 40,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   sectionContainer: {
     marginBottom: 20,
@@ -306,7 +293,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.textSecondary,
+    color: colors.text,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
@@ -332,6 +319,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardLeft: {
     flexDirection: 'row',
@@ -409,32 +401,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 24,
-  },
-  emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
   },
 });

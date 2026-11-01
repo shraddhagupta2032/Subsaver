@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { subscriptionIntelligenceApi } from '../../api/subscriptionIntelligence';
 import { Card } from '../../components/Card';
 import { StatCard } from '../../components/StatCard';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors } from '../../theme/colors';
 
 export const SubscriptionInsightsScreen = ({ navigation }) => {
@@ -119,18 +120,6 @@ export const SubscriptionInsightsScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Subscription Intelligence</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
@@ -142,6 +131,12 @@ export const SubscriptionInsightsScreen = ({ navigation }) => {
           />
         }
       >
+        <ScreenHeader
+          title="Subscription Intelligence"
+          subtitle="Optimization, health & overlaps"
+          back
+          onBack={() => navigation.goBack()}
+        />
         {error && (
           <View style={styles.errorBox}>
             <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
@@ -500,26 +495,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 12,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
   content: {
     padding: 16,
     paddingBottom: 40,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
   errorBox: {
     flexDirection: 'row',

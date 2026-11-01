@@ -66,9 +66,10 @@ export const LoginScreen = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Logo & Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Ionicons name="wallet-outline" size={40} color={colors.primary} />
+              <Ionicons name="wallet" size={34} color={colors.primary} />
             </View>
             <Text style={styles.appName}>SubSaver</Text>
             <Text style={styles.tagline}>
@@ -76,13 +77,14 @@ export const LoginScreen = ({ navigation }) => {
             </Text>
           </View>
 
+          {/* Form Card */}
           <View style={styles.formContainer}>
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in to access your financial dashboard</Text>
 
             {error && (
               <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+                <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
                 <Text style={styles.errorBannerText}>{error}</Text>
               </View>
             )}
@@ -112,6 +114,15 @@ export const LoginScreen = ({ navigation }) => {
               secureTextEntry
             />
 
+            <View style={styles.forgotRow}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ForgotPassword')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.forgotLink}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
+
             <Button
               title="Sign In"
               onPress={handleLogin}
@@ -135,7 +146,7 @@ export const LoginScreen = ({ navigation }) => {
             style={styles.configToggle}
             onPress={() => setShowServerConfig(!showServerConfig)}
           >
-            <Ionicons name="settings-outline" size={14} color={colors.textMuted} />
+            <Ionicons name="settings-outline" size={14} color={colors.textSecondary} />
             <Text style={styles.configToggleText}>
               {showServerConfig ? 'Hide Server URL' : 'Configure Server URL'}
             </Text>
@@ -147,7 +158,7 @@ export const LoginScreen = ({ navigation }) => {
                 label="FastAPI Backend URL"
                 value={serverUrl}
                 onChangeText={setServerUrl}
-                placeholder="http://10.0.2.2:8000"
+                placeholder="http://127.0.0.1:8000"
                 icon="server-outline"
               />
               <Button
@@ -176,51 +187,61 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    maxWidth: 460,
+    width: '100%',
+    alignSelf: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
   },
   logoContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1.5,
+    borderColor: 'rgba(13, 143, 111, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     color: colors.text,
-    letterSpacing: 0.5,
+    letterSpacing: -0.5,
   },
   tagline: {
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 4,
+    textAlign: 'center',
   },
   formContainer: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 20,
-    marginBottom: 20,
+    padding: 22,
+    marginBottom: 16,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
     marginBottom: 4,
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   errorBanner: {
     flexDirection: 'row',
@@ -228,7 +249,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerBg,
     borderColor: colors.danger,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
     marginBottom: 16,
   },
@@ -237,9 +258,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 8,
     flex: 1,
+    fontWeight: '500',
+  },
+  forgotRow: {
+    alignItems: 'flex-end',
+    marginTop: -8,
+    marginBottom: 14,
+  },
+  forgotLink: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '700',
   },
   loginButton: {
-    marginTop: 8,
     marginBottom: 16,
   },
   footer: {
@@ -253,29 +284,30 @@ const styles = StyleSheet.create({
   },
   signupLink: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 14,
   },
   configToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
+    marginTop: 6,
   },
   configToggleText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontSize: 12,
+    fontWeight: '600',
     marginLeft: 6,
   },
   serverBox: {
     marginTop: 14,
     backgroundColor: colors.surface,
-    padding: 14,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
   },
   applyButton: {
-    height: 40,
+    height: 42,
   },
 });

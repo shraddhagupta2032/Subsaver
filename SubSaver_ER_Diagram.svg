@@ -1,0 +1,218 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 780" width="1120" height="780" style="background:#ffffff; font-family:'Segoe UI', Helvetica, Arial, sans-serif;">
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- Canvas Grid Background (Subtle Draw.io style) -->
+  <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+    <circle cx="10" cy="10" r="0.75" fill="#D8DEE4" />
+  </pattern>
+  <rect width="100%" height="100%" fill="#FAFAFA" />
+  <rect width="100%" height="100%" fill="url(#grid)" />
+
+  <!-- CONNECTOR LINES -->
+  <g stroke="#4A5568" stroke-width="1.8" fill="none">
+    <!-- USERS to joins to GROUPS -->
+    <path d="M 460 125 L 280 125" />
+    <path d="M 200 125 L 175 125 L 175 300" />
+
+    <!-- USERS to shares to SUBSCRIPTIONS -->
+    <path d="M 555 205 L 555 232" />
+    <path d="M 555 272 L 555 300" />
+
+    <!-- USERS to makes to PAYMENTS -->
+    <path d="M 650 125 L 830 125" />
+    <path d="M 910 125 L 935 125 L 935 300" />
+
+    <!-- GROUPS to has to SUBSCRIPTIONS -->
+    <path d="M 270 370 L 330 370" />
+    <path d="M 400 370 L 460 370" />
+
+    <!-- GROUPS to has to EXPENSES -->
+    <path d="M 175 440 L 175 482" />
+    <path d="M 175 518 L 175 560" />
+
+    <!-- SUBSCRIPTIONS to for to PAYMENTS -->
+    <path d="M 650 370 L 710 370" />
+    <path d="M 780 370 L 840 370" />
+
+    <!-- EXPENSES to generates to DEBTS -->
+    <path d="M 270 647 L 320 647" />
+    <path d="M 410 647 L 460 647" />
+  </g>
+
+  <!-- CARDINALITY LABELS -->
+  <g font-size="13" font-weight="bold" fill="#2D3748" text-anchor="middle">
+    <!-- USERS joins GROUPS (M:N) -->
+    <text x="442" y="118">M</text>
+    <text x="160" y="285">N</text>
+
+    <!-- USERS shares SUBSCRIPTIONS (M:N) -->
+    <text x="572" y="222">M</text>
+    <text x="572" y="292">N</text>
+
+    <!-- USERS makes PAYMENTS (1:N) -->
+    <text x="668" y="118">1</text>
+    <text x="952" y="285">N</text>
+
+    <!-- GROUPS has SUBSCRIPTIONS (1:N) -->
+    <text x="295" y="362">1</text>
+    <text x="435" y="362">N</text>
+
+    <!-- GROUPS has EXPENSES (1:N) -->
+    <text x="192" y="462">1</text>
+    <text x="192" y="542">N</text>
+
+    <!-- SUBSCRIPTIONS for PAYMENTS (1:N) -->
+    <text x="675" y="362">1</text>
+    <text x="815" y="362">N</text>
+
+    <!-- EXPENSES generates DEBTS (1:N) -->
+    <text x="295" y="639">1</text>
+    <text x="435" y="639">N</text>
+  </g>
+
+  <!-- RELATIONSHIP DIAMONDS -->
+  <g font-size="12" font-weight="bold" fill="#24384D" text-anchor="middle" dominant-baseline="central">
+    <!-- joins -->
+    <polygon points="240,105 280,125 240,145 200,125" fill="#E8EEF5" stroke="#7B96B2" stroke-width="1.5" />
+    <text x="240" y="125">joins</text>
+
+    <!-- shares -->
+    <polygon points="555,232 595,252 555,272 515,252" fill="#E8EEF5" stroke="#7B96B2" stroke-width="1.5" />
+    <text x="555" y="252">shares</text>
+
+    <!-- makes -->
+    <polygon points="870,105 910,125 870,145 830,125" fill="#E8EEF5" stroke="#7B96B2" stroke-width="1.5" />
+    <text x="870" y="125">makes</text>
+
+    <!-- has (Groups -> Subs) -->
+    <polygon points="365,352 400,370 365,388 330,370" fill="#E8EEF5" stroke="#7B96B2" stroke-width="1.5" />
+    <text x="365" y="370">has</text>
+
+    <!-- has (Groups -> Expenses) -->
+    <polygon points="175,482 210,500 175,518 140,500" fill="#E8EEF5" stroke="#7B96B2" stroke-width="1.5" />
+    <text x="175" y="500">has</text>
+
+    <!-- for (Subs -> Payments) -->
+    <polygon points="745,352 780,370 745,388 710,370" fill="#E8EEF5" stroke="#7B96B2" stroke-width="1.5" />
+    <text x="745" y="370">for</text>
+
+    <!-- generates (Expenses -> Debts) -->
+    <polygon points="365,627 410,647 365,667 320,647" fill="#E8EEF5" stroke="#7B96B2" stroke-width="1.5" />
+    <text x="365" y="647">generates</text>
+  </g>
+
+  <!-- ENTITY CARDS -->
+
+  <!-- 1. USERS -->
+  <g transform="translate(460, 50)" filter="url(#shadow)">
+    <!-- Box container -->
+    <rect width="190" height="155" rx="8" fill="#F8F2FA" stroke="#9673A6" stroke-width="1.5" />
+    <!-- Header -->
+    <path d="M 0 8 Q 0 0 8 0 L 182 0 Q 190 0 190 8 L 190 32 L 0 32 Z" fill="#D5B8D9" />
+    <line x1="0" y1="32" x2="190" y2="32" stroke="#9673A6" stroke-width="1.2" />
+    <text x="95" y="21" font-size="13" font-weight="bold" fill="#361543" text-anchor="middle">USERS</text>
+    <!-- Collapse icon indicator as in draw.io -->
+    <rect x="6" y="8" width="10" height="10" rx="1.5" fill="#C5A5C9" stroke="#9673A6" stroke-width="0.8" />
+    <line x1="8" y1="13" x2="14" y2="13" stroke="#361543" stroke-width="1.2" />
+    <!-- Attributes -->
+    <g font-size="12" fill="#2D3748" transform="translate(14, 52)">
+      <text y="0"><tspan font-weight="bold" fill="#5E3073">PK</tspan> id</text>
+      <text y="20">name</text>
+      <text y="40">email <tspan fill="#718096" font-size="11">(UQ)</tspan></text>
+      <text y="60">password_hash</text>
+      <text y="80">created_at</text>
+    </g>
+  </g>
+
+  <!-- 2. GROUPS -->
+  <g transform="translate(80, 300)" filter="url(#shadow)">
+    <rect width="190" height="140" rx="8" fill="#F1F8F1" stroke="#689F68" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 182 0 Q 190 0 190 8 L 190 32 L 0 32 Z" fill="#B8DABA" />
+    <line x1="0" y1="32" x2="190" y2="32" stroke="#689F68" stroke-width="1.2" />
+    <text x="95" y="21" font-size="13" font-weight="bold" fill="#173617" text-anchor="middle">GROUPS</text>
+    <rect x="6" y="8" width="10" height="10" rx="1.5" fill="#A4CCA6" stroke="#689F68" stroke-width="0.8" />
+    <line x1="8" y1="13" x2="14" y2="13" stroke="#173617" stroke-width="1.2" />
+    <g font-size="12" fill="#2D3748" transform="translate(14, 52)">
+      <text y="0"><tspan font-weight="bold" fill="#285E28">PK</tspan> id</text>
+      <text y="20">name</text>
+      <text y="40"><tspan font-weight="bold" fill="#285E28">FK</tspan> created_by</text>
+      <text y="60">created_at</text>
+    </g>
+  </g>
+
+  <!-- 3. SUBSCRIPTIONS -->
+  <g transform="translate(460, 300)" filter="url(#shadow)">
+    <rect width="190" height="175" rx="8" fill="#EDF4FD" stroke="#5588C7" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 182 0 Q 190 0 190 8 L 190 32 L 0 32 Z" fill="#A4C8F0" />
+    <line x1="0" y1="32" x2="190" y2="32" stroke="#5588C7" stroke-width="1.2" />
+    <text x="95" y="21" font-size="13" font-weight="bold" fill="#123258" text-anchor="middle">SUBSCRIPTIONS</text>
+    <rect x="6" y="8" width="10" height="10" rx="1.5" fill="#8BB8EB" stroke="#5588C7" stroke-width="0.8" />
+    <line x1="8" y1="13" x2="14" y2="13" stroke="#123258" stroke-width="1.2" />
+    <g font-size="12" fill="#2D3748" transform="translate(14, 52)">
+      <text y="0"><tspan font-weight="bold" fill="#1C4B82">PK</tspan> id</text>
+      <text y="20">name</text>
+      <text y="40">amount</text>
+      <text y="60">billing_cycle</text>
+      <text y="80">next_billing_date</text>
+      <text y="100"><tspan font-weight="bold" fill="#1C4B82">FK</tspan> group_id</text>
+    </g>
+  </g>
+
+  <!-- 4. PAYMENTS -->
+  <g transform="translate(840, 300)" filter="url(#shadow)">
+    <rect width="190" height="155" rx="8" fill="#FFF9E8" stroke="#DDA625" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 182 0 Q 190 0 190 8 L 190 32 L 0 32 Z" fill="#FFE082" />
+    <line x1="0" y1="32" x2="190" y2="32" stroke="#DDA625" stroke-width="1.2" />
+    <text x="95" y="21" font-size="13" font-weight="bold" fill="#543800" text-anchor="middle">PAYMENTS</text>
+    <rect x="6" y="8" width="10" height="10" rx="1.5" fill="#FAD15C" stroke="#DDA625" stroke-width="0.8" />
+    <line x1="8" y1="13" x2="14" y2="13" stroke="#543800" stroke-width="1.2" />
+    <g font-size="12" fill="#2D3748" transform="translate(14, 52)">
+      <text y="0"><tspan font-weight="bold" fill="#805900">PK</tspan> id</text>
+      <text y="20"><tspan font-weight="bold" fill="#805900">FK</tspan> paid_by</text>
+      <text y="40"><tspan font-weight="bold" fill="#805900">FK</tspan> subscription_id</text>
+      <text y="60">amount</text>
+      <text y="80">paid_at</text>
+    </g>
+  </g>
+
+  <!-- 5. EXPENSES -->
+  <g transform="translate(80, 560)" filter="url(#shadow)">
+    <rect width="190" height="175" rx="8" fill="#FDF2F2" stroke="#C95B5B" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 182 0 Q 190 0 190 8 L 190 32 L 0 32 Z" fill="#F4A5A5" />
+    <line x1="0" y1="32" x2="190" y2="32" stroke="#C95B5B" stroke-width="1.2" />
+    <text x="95" y="21" font-size="13" font-weight="bold" fill="#521414" text-anchor="middle">EXPENSES</text>
+    <rect x="6" y="8" width="10" height="10" rx="1.5" fill="#E88D8D" stroke="#C95B5B" stroke-width="0.8" />
+    <line x1="8" y1="13" x2="14" y2="13" stroke="#521414" stroke-width="1.2" />
+    <g font-size="12" fill="#2D3748" transform="translate(14, 52)">
+      <text y="0"><tspan font-weight="bold" fill="#872929">PK</tspan> id</text>
+      <text y="20">title</text>
+      <text y="40">total_amount</text>
+      <text y="60"><tspan font-weight="bold" fill="#872929">FK</tspan> paid_by</text>
+      <text y="80"><tspan font-weight="bold" fill="#872929">FK</tspan> group_id</text>
+      <text y="100">created_at</text>
+    </g>
+  </g>
+
+  <!-- 6. DEBTS -->
+  <g transform="translate(460, 560)" filter="url(#shadow)">
+    <rect width="190" height="175" rx="8" fill="#EFFBFA" stroke="#429B8F" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 182 0 Q 190 0 190 8 L 190 32 L 0 32 Z" fill="#A2E8DD" />
+    <line x1="0" y1="32" x2="190" y2="32" stroke="#429B8F" stroke-width="1.2" />
+    <text x="95" y="21" font-size="13" font-weight="bold" fill="#093A34" text-anchor="middle">DEBTS</text>
+    <rect x="6" y="8" width="10" height="10" rx="1.5" fill="#84D6CA" stroke="#429B8F" stroke-width="0.8" />
+    <line x1="8" y1="13" x2="14" y2="13" stroke="#093A34" stroke-width="1.2" />
+    <g font-size="12" fill="#2D3748" transform="translate(14, 52)">
+      <text y="0"><tspan font-weight="bold" fill="#166359">PK</tspan> id</text>
+      <text y="20">status</text>
+      <text y="40">amount</text>
+      <text y="60"><tspan font-weight="bold" fill="#166359">FK</tspan> expense_id</text>
+      <text y="80"><tspan font-weight="bold" fill="#166359">FK</tspan> from_user_id</text>
+      <text y="100"><tspan font-weight="bold" fill="#166359">FK</tspan> to_user_id</text>
+    </g>
+  </g>
+
+</svg>

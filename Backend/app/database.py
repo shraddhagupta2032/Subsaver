@@ -7,12 +7,23 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./subsaver.db")
 
+# Normalize cloud PostgreSQL URLs (Render, Railway, Heroku use postgres://)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 
 def create_db_engine(url: str):
     connect_args = {}
+    extra_args = {}
     if url.startswith("sqlite"):
         connect_args = {"check_same_thread": False}
-    return create_engine(url, connect_args=connect_args)
+    else:
+        # Production Postgres connection pooling & liveness check
+        extra_args = {
+            "pool_pre_ping": True,
+            "pool_recycle": 300,
+        }
+    return create_engine(url, connect_args=connect_args, **extra_args)
 
 
 engine = None

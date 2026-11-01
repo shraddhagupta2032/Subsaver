@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -8,9 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
+import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { DashboardScreen } from '../screens/main/DashboardScreen';
 import { GroupsScreen } from '../screens/main/GroupsScreen';
 import { GroupDetailsScreen } from '../screens/main/GroupDetailsScreen';
+import { ExpensesScreen } from '../screens/main/ExpensesScreen';
 import { AddExpenseScreen } from '../screens/main/AddExpenseScreen';
 import { ExpenseDetailsScreen } from '../screens/main/ExpenseDetailsScreen';
 import { SubscriptionsScreen } from '../screens/main/SubscriptionsScreen';
@@ -33,11 +35,11 @@ import { SettlementDetailsScreen } from '../screens/main/SettlementDetailsScreen
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { colors } from '../theme/colors';
 
-
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const GroupsStack = createNativeStackNavigator();
 const DashboardStack = createNativeStackNavigator();
+const ExpensesStack = createNativeStackNavigator();
 const SubscriptionsStack = createNativeStackNavigator();
 const BillScannerStack = createNativeStackNavigator();
 
@@ -72,6 +74,17 @@ const GroupsNavigator = () => {
   );
 };
 
+const ExpensesNavigator = () => {
+  return (
+    <ExpensesStack.Navigator screenOptions={{ headerShown: false }}>
+      <ExpensesStack.Screen name="ExpensesList" component={ExpensesScreen} />
+      <ExpensesStack.Screen name="ExpenseDetails" component={ExpenseDetailsScreen} />
+      <ExpensesStack.Screen name="AddExpense" component={AddExpenseScreen} />
+      <ExpensesStack.Screen name="BillScanner" component={BillScannerNavigator} />
+    </ExpensesStack.Navigator>
+  );
+};
+
 const SubscriptionsNavigator = () => {
   return (
     <SubscriptionsStack.Navigator screenOptions={{ headerShown: false }}>
@@ -98,6 +111,7 @@ const DashboardNavigator = () => {
     <DashboardStack.Navigator screenOptions={{ headerShown: false }}>
       <DashboardStack.Screen name="DashboardHome" component={DashboardScreen} />
       <DashboardStack.Screen name="ExpenseDetails" component={ExpenseDetailsScreen} />
+      <DashboardStack.Screen name="AddExpense" component={AddExpenseScreen} />
       <DashboardStack.Screen name="SubscriptionDetails" component={SubscriptionDetailsScreen} />
       <DashboardStack.Screen name="SubscriptionInsights" component={SubscriptionInsightsScreen} />
       <DashboardStack.Screen name="BillScanner" component={BillScannerNavigator} />
@@ -113,52 +127,71 @@ const DashboardNavigator = () => {
   );
 };
 
-
-
-
-
 const MainTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: '#FFFFFF',
           borderTopColor: colors.border,
-          height: 60,
+          borderTopWidth: 1,
+          height: 64,
           paddingBottom: 8,
           paddingTop: 8,
+          ...Platform.select({
+            ios: {
+              shadowColor: '#183129',
+              shadowOffset: { width: 0, height: -3 },
+              shadowOpacity: 0.05,
+              shadowRadius: 10,
+            },
+            android: {
+              elevation: 8,
+            },
+            web: {
+              boxShadow: '0 -4px 16px rgba(24, 49, 41, 0.05)',
+            },
+          }),
         },
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
+          fontWeight: '700',
+          marginTop: -2,
         },
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName;
-          if (route.name === 'Dashboard') {
+          if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Groups') {
             iconName = focused ? 'people' : 'people-outline';
+          } else if (route.name === 'Expenses') {
+            iconName = focused ? 'receipt' : 'receipt-outline';
           } else if (route.name === 'Subscriptions') {
-            iconName = focused ? 'layers' : 'layers-outline';
+            iconName = focused ? 'sync' : 'sync-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
-          return <Ionicons name={iconName} size={22} color={color} />;
+
+          return (
+            <View style={styles.tabIconBox}>
+              {focused && <View style={styles.activeIndicator} />}
+              <Ionicons name={iconName} size={22} color={color} />
+            </View>
+          );
         },
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardNavigator} />
+      <Tab.Screen name="Home" component={DashboardNavigator} />
       <Tab.Screen name="Groups" component={GroupsNavigator} />
+      <Tab.Screen name="Expenses" component={ExpensesNavigator} />
       <Tab.Screen name="Subscriptions" component={SubscriptionsNavigator} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
-
   );
 };
-
 
 export const AppNavigator = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -180,6 +213,7 @@ export const AppNavigator = () => {
           <>
             <RootStack.Screen name="Login" component={LoginScreen} />
             <RootStack.Screen name="Register" component={RegisterScreen} />
+            <RootStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           </>
         )}
       </RootStack.Navigator>
@@ -193,5 +227,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tabIconBox: {
+    alignItems: 'center',
+    position: 'relative',
+    height: 28,
+    justifyContent: 'center',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    top: -8,
+    width: 20,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
   },
 });

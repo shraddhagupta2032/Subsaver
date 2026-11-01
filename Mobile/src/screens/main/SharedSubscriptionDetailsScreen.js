@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { sharedSubscriptionsApi } from '../../api/sharedSubscriptions';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors } from '../../theme/colors';
 
 export const SharedSubscriptionDetailsScreen = ({ route, navigation }) => {
@@ -128,19 +129,14 @@ export const SharedSubscriptionDetailsScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Shared Subscription</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
       <ScrollView contentContainerStyle={styles.content}>
+        <ScreenHeader
+          title="Shared Subscription"
+          subtitle={sub.name}
+          back
+          onBack={() => navigation.goBack()}
+        />
+
         {/* Main Hero Card */}
         <Card style={styles.heroCard}>
           <View style={styles.heroHeader}>
@@ -293,26 +289,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
   content: {
     padding: 16,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   heroCard: {
     marginBottom: 16,
@@ -349,9 +331,9 @@ const styles = StyleSheet.create({
     color: colors.success,
   },
   userShareBox: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: '#C6ECD9',
     borderRadius: 14,
     padding: 14,
   },
@@ -430,7 +412,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   memberRowMe: {
-    backgroundColor: 'rgba(59, 130, 246, 0.06)',
+    backgroundColor: colors.primarySoft,
     borderRadius: 8,
     paddingHorizontal: 8,
   },

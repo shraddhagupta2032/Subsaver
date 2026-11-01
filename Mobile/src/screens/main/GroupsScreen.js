@@ -8,16 +8,20 @@ import {
   RefreshControl,
   ActivityIndicator,
   Modal,
-  Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { groupsApi } from '../../api/groups';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
+import { Badge } from '../../components/Badge';
 import { colors } from '../../theme/colors';
 
 export const GroupsScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,75 +80,99 @@ export const GroupsScreen = ({ navigation }) => {
     }
   };
 
-  const renderGroupItem = ({ item }) => (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      style={styles.groupCard}
-      onPress={() =>
-        navigation.navigate('GroupDetails', {
-          groupId: item.id,
-          groupName: item.name,
-        })
-      }
-    >
-      <View style={styles.groupIconContainer}>
-        <Ionicons name="people" size={24} color={colors.primary} />
-      </View>
-      <View style={styles.groupInfo}>
-        <Text style={styles.groupName}>{item.name}</Text>
-        <Text style={styles.groupSubtext}>
-          {item.members_count} member{item.members_count === 1 ? '' : 's'}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-    </TouchableOpacity>
-  );
+  const getGroupIcon = (name = '') => {
+    const n = name.toLowerCase();
+    if (n.includes('flat') || n.includes('room') || n.includes('home') || n.includes('house')) {
+      return { icon: 'home-outline', color: colors.primary };
+    }
+    if (n.includes('trip') || n.includes('goa') || n.includes('travel') || n.includes('tour')) {
+      return { icon: 'airplane-outline', color: colors.info };
+    }
+    if (n.includes('project') || n.includes('work') || n.includes('crew') || n.includes('office')) {
+      return { icon: 'laptop-outline', color: colors.purple };
+    }
+    return { icon: 'people-outline', color: colors.primary };
+  };
+
+  const renderGroupItem = ({ item }) => {
+    const iconConf = getGroupIcon(item.name);
+    return (
+      <TouchableOpacity
+        activeOpacity={0.75}
+        style={styles.groupCard}
+        onPress={() =>
+          navigation.navigate('GroupDetails', {
+            groupId: item.id,
+            groupName: item.name,
+          })
+        }
+      >
+        <View style={[styles.groupIconBox, { backgroundColor: `${iconConf.color}15` }]}>
+          <Ionicons name={iconConf.icon} size={22} color={iconConf.color} />
+        </View>
+
+        <View style={styles.groupInfo}>
+          <Text style={styles.groupName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.groupSubtext} numberOfLines={1}>
+            {item.members_count} member{item.members_count === 1 ? '' : 's'}
+          </Text>
+        </View>
+
+        <View style={styles.groupRight}>
+          <Badge
+            text={item.status_badge || 'Active'}
+            variant={item.status_badge === 'Owed' ? 'danger' : 'success'}
+            size="small"
+          />
+          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} style={{ marginTop: 4 }} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Top Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Groups</Text>
-          <Text style={styles.subtitle}>Split expenses with friends & flatmates</Text>
+      <View style={[styles.header, { maxWidth: isDesktop ? 1140 : '100%' }]}>
+        <View style={styles.headerTitleCol}>
+          <Text style={styles.headerTitle}>Your groups</Text>
+          <Text style={styles.headerSubtitle}>Share costs, not confusion.</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TouchableOpacity
-            style={styles.scanHeaderButton}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('BillScanner', { screen: 'BillScannerHome' })}
-          >
-            <Ionicons name="scan-outline" size={20} color={colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.addButton}
-            activeOpacity={0.8}
-            onPress={() => setModalVisible(true)}
-          >
-            <Ionicons name="add" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.addButtonCircle}
+          onPress={() => {
+            setCreateError(null);
+            setModalVisible(true);
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
-
       {error && (
-        <View style={styles.errorBanner}>
-          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.errorBannerText}>{error}</Text>
+        <View style={[styles.errorBox, { maxWidth: isDesktop ? 1140 : '100%' }]}>
+          <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
 
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading your groups...</Text>
+          <Text style={styles.loadingText}>Loading groups...</Text>
         </View>
       ) : (
         <FlatList
           data={groups}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderGroupItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { maxWidth: isDesktop ? 1140 : '100%', paddingHorizontal: isDesktop ? 24 : 16 },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -156,16 +184,16 @@ export const GroupsScreen = ({ navigation }) => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+                <Ionicons name="people-outline" size={32} color={colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>No groups yet</Text>
+              <Text style={styles.emptyTitle}>No Groups Yet</Text>
               <Text style={styles.emptySubtitle}>
-                Create a group to start tracking and splitting expenses with your flatmates or friends.
+                Create a group for flatmates, trips, or dining splits to start sharing expenses seamlessly.
               </Text>
               <Button
-                title="Create New Group"
+                title="Create First Group"
                 onPress={() => setModalVisible(true)}
-                style={styles.emptyCreateButton}
+                style={{ height: 44, paddingHorizontal: 20 }}
               />
             </View>
           }
@@ -183,42 +211,45 @@ export const GroupsScreen = ({ navigation }) => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create New Group</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
+            <Text style={styles.modalSub}>
+              Enter a descriptive name for your flat, trip, or crew.
+            </Text>
+
             {createError && (
-              <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
-                <Text style={styles.errorBannerText}>{createError}</Text>
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
+                <Text style={styles.errorText}>{createError}</Text>
               </View>
             )}
 
             <Input
               label="Group Name"
               value={newGroupName}
-              onChangeText={(text) => {
-                setNewGroupName(text);
-                setCreateError(null);
-              }}
-              placeholder="e.g. Apartment 402, Goa Trip"
-              icon="people-outline"
+              onChangeText={setNewGroupName}
+              placeholder="e.g. Flatmates, Goa Trip, Friday Dinners"
               autoFocus
             />
 
             <View style={styles.modalActions}>
               <Button
                 title="Cancel"
-                variant="secondary"
+                variant="outline"
                 onPress={() => setModalVisible(false)}
-                style={styles.modalCancelBtn}
+                style={styles.modalBtn}
               />
               <Button
-                title="Create"
+                title="Create Group"
                 onPress={handleCreateGroup}
                 loading={creating}
-                style={styles.modalSubmitBtn}
+                style={styles.modalBtn}
               />
             </View>
           </View>
@@ -235,35 +266,103 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 12,
+    paddingBottom: 8,
+    width: '100%',
+    alignSelf: 'center',
   },
-  title: {
+  headerTitleCol: {
+    flex: 1,
+  },
+  headerTitle: {
     fontSize: 24,
     fontWeight: '800',
     color: colors.text,
+    letterSpacing: -0.5,
   },
-  subtitle: {
+  headerSubtitle: {
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 2,
+    fontWeight: '500',
   },
-  addButton: {
+  addButtonCircle: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 22,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.primary,
+    shadowColor: colors.primaryDark,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     elevation: 4,
+  },
+  listContent: {
+    paddingTop: 10,
+    paddingBottom: 110,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  groupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  groupIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  groupInfo: {
+    flex: 1,
+  },
+  groupName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  groupSubtext: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  groupRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.dangerBg,
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 20,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    marginLeft: 8,
+    flex: 1,
   },
   centerContainer: {
     flex: 1,
@@ -276,138 +375,82 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 12,
   },
-  listContent: {
-    padding: 16,
-    flexGrow: 1,
-  },
-  groupCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    marginBottom: 12,
-  },
-  groupIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  groupInfo: {
-    flex: 1,
-  },
-  groupName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  groupSubtext: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.dangerBg,
-    borderColor: colors.danger,
-    borderWidth: 1,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-  },
-  errorBannerText: {
-    color: colors.danger,
-    fontSize: 13,
-    marginLeft: 8,
-    flex: 1,
-  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 48,
     paddingHorizontal: 24,
-  },
-  emptyIconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 28,
     backgroundColor: colors.surface,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.border,
+    marginTop: 10,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  emptyCreateButton: {
-    minWidth: 180,
+    lineHeight: 19,
+    marginBottom: 20,
+    maxWidth: 320,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(22, 32, 29, 0.45)',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   modalContent: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 20,
+    borderRadius: 22,
+    padding: 24,
+    width: '100%',
+    maxWidth: 420,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 6,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
+  },
+  modalSub: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 18,
   },
   modalActions: {
     flexDirection: 'row',
-    marginTop: 12,
+    gap: 12,
+    marginTop: 8,
   },
-  modalCancelBtn: {
+  modalBtn: {
     flex: 1,
-    marginRight: 8,
-  },
-  modalSubmitBtn: {
-    flex: 1,
-    marginLeft: 8,
-  },
-  scanHeaderButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: 46,
   },
 });

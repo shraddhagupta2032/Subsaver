@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { subscriptionsApi } from '../../api/subscriptions';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors } from '../../theme/colors';
 
 export const SubscriptionDetailsScreen = ({ route, navigation }) => {
@@ -111,24 +112,22 @@ export const SubscriptionDetailsScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Subscription Details</Text>
-        <TouchableOpacity
-          style={styles.editHeaderBtn}
-          onPress={() => navigation.navigate('EditSubscription', { subscriptionId: sub.id })}
-        >
-          <Ionicons name="create-outline" size={22} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView contentContainerStyle={styles.content}>
+        <ScreenHeader
+          title="Subscription Details"
+          subtitle={sub.name}
+          back
+          onBack={() => navigation.goBack()}
+          action={
+            <TouchableOpacity
+              style={styles.editHeaderBtn}
+              onPress={() => navigation.navigate('EditSubscription', { subscriptionId: sub.id })}
+            >
+              <Ionicons name="create-outline" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          }
+        />
+
         {/* Main Hero Card */}
         <Card style={styles.heroCard}>
           <View style={styles.heroHeader}>
@@ -258,29 +257,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
   editHeaderBtn: {
-    padding: 4,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     padding: 16,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   heroCard: {
     marginBottom: 16,

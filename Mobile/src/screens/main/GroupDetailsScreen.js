@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,25 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { groupsApi } from '../../api/groups';
 import { expensesApi } from '../../api/expenses';
 import { sharedSubscriptionsApi } from '../../api/sharedSubscriptions';
-import { Card } from '../../components/Card';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { colors } from '../../theme/colors';
 
+const MEMBER_TONES = ['mint', 'peach', 'sky', 'purple'];
+
 export const GroupDetailsScreen = ({ route, navigation }) => {
   const { groupId, groupName } = route.params || {};
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
 
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
@@ -60,12 +66,10 @@ export const GroupDetailsScreen = ({ route, navigation }) => {
     }
   }, [groupId]);
 
-
   useEffect(() => {
     fetchGroupDetails();
   }, [fetchGroupDetails]);
 
-  // Re-fetch when navigating back from Add Expense or Expense Details
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchGroupDetails();
@@ -91,7 +95,7 @@ export const GroupDetailsScreen = ({ route, navigation }) => {
       setMemberEmail('');
       setAddMemberVisible(false);
       fetchGroupDetails();
-      Alert.alert('Member Added', 'Member was successfully added to the group.');
+      Alert.alert('Success', 'Member invited to group successfully.');
     } catch (err) {
       setMemberError(err.message || 'Failed to add member.');
     } finally {
@@ -99,52 +103,40 @@ export const GroupDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading group details...</Text>
-      </SafeAreaView>
-    );
-  }
+  const totalGroupSpend = useMemo(() => {
+    return expenses.reduce((sum, e) => sum + Number(e.total_amount || 0), 0);
+  }, [expenses]);
+
+  const titleText = group?.name || groupName || 'Group Details';
+  const subtitleText = `${members.length} member${members.length === 1 ? '' : 's'} • ${expenses.length} expense${expenses.length === 1 ? '' : 's'}`;
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Custom Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {group?.name || groupName || 'Group Details'}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {members.length} member{members.length === 1 ? '' : 's'}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.headerActionBtn}
-          onPress={() => setAddMemberVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="person-add-outline" size={20} color={colors.primary} />
-        </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.headerContainer, { maxWidth: isDesktop ? 1140 : '100%' }]}>
+        <ScreenHeader
+          title={titleText}
+          subtitle={subtitleText}
+          back
+          onBack={() => navigation.goBack()}
+          action={
+            <TouchableOpacity
+              style={styles.moreBtn}
+              onPress={() => setAddMemberVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="person-add-outline" size={18} color={colors.primary} />
+            </TouchableOpacity>
+          }
+        />
       </View>
 
-      {error && (
-        <View style={styles.errorBanner}>
-          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.errorBannerText}>{error}</Text>
-        </View>
-      )}
-
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        style={styles.content}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { maxWidth: isDesktop ? 1140 : '100%', paddingHorizontal: isDesktop ? 24 : 16 },
+        ]}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -154,163 +146,112 @@ export const GroupDetailsScreen = ({ route, navigation }) => {
           />
         }
       >
-        {/* Action Button: Add Expense */}
-        <Button
-          title="+ Add Group Expense"
-          onPress={() =>
-            navigation.navigate('AddExpense', {
-              groupId,
-              groupName: group?.name || groupName,
-              members,
-            })
-          }
-          style={styles.addExpenseBtn}
-        />
+        {/* Total Group Spending Hero */}
+        <View style={styles.groupHeroCard}>
+          <Text style={styles.heroLabel}>Total group spend</Text>
+          <Text style={styles.heroAmount}>
+            ₹{Number(totalGroupSpend).toLocaleString('en-IN')}
+          </Text>
+          <Text style={styles.heroSub}>
+            Shared among {members.length} flatmates & crew members
+          </Text>
+        </View>
 
-        {/* Group Members Section */}
-        <Card>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Ionicons name="people-outline" size={20} color={colors.primary} />
-              <Text style={styles.sectionTitle}>Members</Text>
-            </View>
-            <TouchableOpacity onPress={() => setAddMemberVisible(true)}>
-              <Text style={styles.addMemberText}>+ Add Member</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Action Buttons Row */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('AddExpense', { groupId, groupName: titleText })}
+          >
+            <Ionicons name="add-circle" size={18} color={colors.primary} />
+            <Text style={styles.actionBtnText}>Add Expense</Text>
+          </TouchableOpacity>
 
-          <View style={styles.membersGrid}>
-            {members.map((m) => (
-              <View key={m.id || m.user_id} style={styles.memberChip}>
-                <View style={styles.memberAvatar}>
-                  <Text style={styles.avatarInitial}>
-                    {(m.name || m.user_name || 'U')[0].toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.memberTextContainer}>
-                  <Text style={styles.memberName} numberOfLines={1}>
-                    {m.name || m.user_name}
-                  </Text>
-                  <Text style={styles.memberEmail} numberOfLines={1}>
-                    {m.email || m.user_email || ''}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </Card>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Settlements', { groupId, groupName: titleText })}
+          >
+            <Ionicons name="swap-horizontal" size={18} color={colors.primary} />
+            <Text style={styles.actionBtnText}>Settle Debts</Text>
+          </TouchableOpacity>
 
-        {/* Shared Subscriptions Section */}
-        <Card>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Ionicons name="repeat-outline" size={20} color={colors.primary} />
-              <Text style={styles.sectionTitle}>Shared Subscriptions</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('AddSharedSubscription', {
-                  groupId,
-                  groupName: group?.name || groupName,
-                })
-              }
-            >
-              <Text style={styles.addMemberText}>+ Add Shared Sub</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('AddSharedSubscription', { groupId, groupName: titleText })}
+          >
+            <Ionicons name="sync" size={16} color={colors.primary} />
+            <Text style={styles.actionBtnText}>Share Sub</Text>
+          </TouchableOpacity>
+        </View>
 
-          {sharedSubs.length > 0 ? (
-            sharedSubs.map((sub) => {
-              const userShare = sub.current_user_share
-                ? Number(sub.current_user_share).toFixed(2)
-                : (Number(sub.total_amount) / (sub.members?.length || 1)).toFixed(2);
+        {/* Group Members List */}
+        <Text style={styles.sectionTitle}>Members</Text>
+        <View style={styles.membersContainer}>
+          {members.length > 0 ? (
+            members.map((m, idx) => {
+              const tone = MEMBER_TONES[idx % MEMBER_TONES.length];
+              const isLast = idx === members.length - 1;
               return (
-                <TouchableOpacity
-                  key={sub.id}
-                  style={styles.expenseItem}
-                  activeOpacity={0.7}
-                  onPress={() =>
-                    navigation.navigate('SharedSubscriptionDetails', {
-                      subscriptionId: sub.id,
-                    })
-                  }
-                >
-                  <View style={styles.expenseLeft}>
-                    <Text style={styles.expenseTitle}>{sub.name}</Text>
-                    <Text style={styles.expenseMeta}>
-                      Paid by {sub.payer_name} • Renews: {sub.next_renewal_date}
-                    </Text>
+                <View key={m.id || idx} style={[styles.memberItem, !isLast && styles.memberBorder]}>
+                  <Avatar name={m.name || m.email || 'Member'} tone={tone} />
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>{m.name || m.email}</Text>
+                    <Text style={styles.memberRole}>{m.role || 'Member'}</Text>
                   </View>
-                  <View style={styles.expenseRight}>
-                    <Text style={styles.expenseAmount}>₹{userShare}/mo</Text>
-                    <Text style={styles.splitsCount}>Your Share</Text>
+                  <View style={styles.memberBalanceCol}>
+                    <Text style={styles.memberBalanceLabel}>Status</Text>
+                    <Text style={styles.memberBalanceVal}>Active</Text>
                   </View>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={18}
-                    color={colors.textMuted}
-                    style={styles.chevron}
-                  />
-                </TouchableOpacity>
+                </View>
               );
             })
           ) : (
-            <View style={styles.emptyExpenses}>
-              <Text style={styles.emptyExpensesText}>
-                No shared recurring subscriptions in this group yet.
-              </Text>
-            </View>
+            <Text style={styles.emptyText}>No members found.</Text>
           )}
-        </Card>
+        </View>
 
-        {/* Shared Expenses Section */}
-        <Card>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Ionicons name="receipt-outline" size={20} color={colors.purple} />
-              <Text style={styles.sectionTitle}>Group Expenses</Text>
+        {/* Group Expenses Section */}
+        <Text style={styles.sectionTitle}>Group Expenses</Text>
+        <View style={styles.expensesContainer}>
+          {loading ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ padding: 20 }} />
+          ) : expenses.length === 0 ? (
+            <View style={styles.emptyExpenseBox}>
+              <Ionicons name="receipt-outline" size={28} color={colors.primary} />
+              <Text style={styles.emptyExpenseTitle}>No Expenses In This Group</Text>
+              <Text style={styles.emptyExpenseSub}>Tap "Add Expense" above to record the first shared bill.</Text>
             </View>
-            <Text style={styles.countText}>{expenses.length} total</Text>
-          </View>
-
-
-          {expenses.length > 0 ? (
-            expenses.map((exp) => (
-              <TouchableOpacity
-                key={exp.id}
-                style={styles.expenseItem}
-                activeOpacity={0.7}
-                onPress={() =>
-                  navigation.navigate('ExpenseDetails', {
-                    expenseId: exp.id,
-                  })
-                }
-              >
-                <View style={styles.expenseLeft}>
-                  <Text style={styles.expenseTitle}>{exp.title}</Text>
-                  <Text style={styles.expenseMeta}>
-                    Paid by {exp.payer_name} • {exp.expense_date}
-                  </Text>
-                </View>
-                <View style={styles.expenseRight}>
-                  <Text style={styles.expenseAmount}>
-                    ₹{Number(exp.total_amount).toLocaleString('en-IN')}
-                  </Text>
-                  <Text style={styles.splitsCount}>
-                    {exp.splits?.length || 0} split{exp.splits?.length === 1 ? '' : 's'}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={styles.chevron} />
-              </TouchableOpacity>
-            ))
           ) : (
-            <View style={styles.emptyExpenses}>
-              <Text style={styles.emptyExpensesText}>
-                No expenses added to this group yet.
-              </Text>
-            </View>
+            expenses.map((exp, idx) => {
+              const isLast = idx === expenses.length - 1;
+              return (
+                <TouchableOpacity
+                  key={exp.id || idx}
+                  style={[styles.expenseItem, !isLast && styles.expenseBorder]}
+                  activeOpacity={0.75}
+                  onPress={() => navigation.navigate('ExpenseDetails', { expenseId: exp.id, expenseTitle: exp.title })}
+                >
+                  <View style={styles.expenseLeft}>
+                    <View style={styles.expenseIconBox}>
+                      <Ionicons name="receipt-outline" size={18} color={colors.primary} />
+                    </View>
+                    <View style={styles.expenseTextCol}>
+                      <Text style={styles.expenseTitle}>{exp.title}</Text>
+                      <Text style={styles.expenseSub}>{exp.payer_name ? `${exp.payer_name} paid` : 'Paid'} • {exp.expense_date || 'Recent'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.expenseRight}>
+                    <Text style={styles.expenseAmount}>₹{Number(exp.total_amount).toLocaleString('en-IN')}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           )}
-        </Card>
+        </View>
       </ScrollView>
 
       {/* Add Member Modal */}
@@ -323,45 +264,44 @@ export const GroupDetailsScreen = ({ route, navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Member by Email</Text>
+              <Text style={styles.modalTitle}>Add Member to Group</Text>
               <TouchableOpacity onPress={() => setAddMemberVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.textSecondary} />
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
+            <Text style={styles.modalSub}>
+              Enter the registered email of the user to invite them to {titleText}.
+            </Text>
+
             {memberError && (
-              <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
-                <Text style={styles.errorBannerText}>{memberError}</Text>
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
+                <Text style={styles.errorText}>{memberError}</Text>
               </View>
             )}
 
             <Input
-              label="Registered Email Address"
+              label="User Email"
               value={memberEmail}
-              onChangeText={(text) => {
-                setMemberEmail(text);
-                setMemberError(null);
-              }}
-              placeholder="friend@example.com"
-              icon="mail-outline"
+              onChangeText={setMemberEmail}
+              placeholder="flatmate@example.com"
               keyboardType="email-address"
-              autoCapitalize="none"
               autoFocus
             />
 
             <View style={styles.modalActions}>
               <Button
                 title="Cancel"
-                variant="secondary"
+                variant="outline"
                 onPress={() => setAddMemberVisible(false)}
-                style={styles.modalCancelBtn}
+                style={styles.modalBtn}
               />
               <Button
-                title="Add Member"
+                title="Invite Member"
                 onPress={handleAddMember}
                 loading={addingMember}
-                style={styles.modalSubmitBtn}
+                style={styles.modalBtn}
               />
             </View>
           </View>
@@ -376,221 +316,279 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  centerContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+  headerContainer: {
+    paddingHorizontal: 20,
+    width: '100%',
+    alignSelf: 'center',
   },
-  loadingText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: 12,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 6,
-    marginRight: 8,
-  },
-  headerTitleContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  headerActionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+  moreBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  addExpenseBtn: {
-    marginBottom: 16,
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.dangerBg,
-    borderColor: colors.danger,
-    borderWidth: 1,
-    borderRadius: 12,
-    margin: 16,
-    padding: 12,
-  },
-  errorBannerText: {
-    color: colors.danger,
-    fontSize: 13,
-    marginLeft: 8,
+  content: {
     flex: 1,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+  scrollContent: {
+    paddingBottom: 110,
+    width: '100%',
+    alignSelf: 'center',
   },
-  sectionTitleRow: {
+  groupHeroCard: {
+    backgroundColor: colors.primaryDark,
+    borderRadius: 22,
+    padding: 20,
+    marginVertical: 12,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  heroLabel: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  heroAmount: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    marginBottom: 6,
+  },
+  heroSub: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 12,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  actionBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingVertical: 12,
+    gap: 6,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
-    marginLeft: 8,
+    letterSpacing: -0.3,
+    marginBottom: 10,
+    marginLeft: 4,
   },
-  addMemberText: {
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 13,
+  membersContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  countText: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-  membersGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  memberChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 12,
-    padding: 8,
-    margin: 4,
-    minWidth: '45%',
-    flex: 1,
-  },
-  memberAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  avatarInitial: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  memberTextContainer: {
-    flex: 1,
-  },
-  memberName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  memberEmail: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  expenseItem: {
+  memberItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+  },
+  memberBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
   },
-  expenseLeft: {
+  memberInfo: {
     flex: 1,
+    marginLeft: 12,
   },
-  expenseTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  expenseMeta: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  expenseRight: {
-    alignItems: 'flex-end',
-    marginRight: 8,
-  },
-  expenseAmount: {
-    fontSize: 15,
+  memberName: {
+    fontSize: 14,
     fontWeight: '700',
     color: colors.text,
   },
-  splitsCount: {
+  memberRole: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  memberBalanceCol: {
+    alignItems: 'flex-end',
+  },
+  memberBalanceLabel: {
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  memberBalanceVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  expensesContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  expenseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  expenseBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  expenseLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  expenseIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  expenseTextCol: {
+    flex: 1,
+  },
+  expenseTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  expenseSub: {
     fontSize: 11,
     color: colors.textSecondary,
     marginTop: 2,
   },
-  chevron: {
-    marginLeft: 4,
-  },
-  emptyExpenses: {
-    paddingVertical: 20,
+  expenseRight: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
-  emptyExpensesText: {
-    color: colors.textMuted,
+  expenseAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  emptyExpenseBox: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  emptyExpenseTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 6,
+  },
+  emptyExpenseSub: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  emptyText: {
+    padding: 16,
+    textAlign: 'center',
+    color: colors.textSecondary,
     fontSize: 13,
-    fontStyle: 'italic',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(22, 32, 29, 0.45)',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   modalContent: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 20,
+    borderRadius: 22,
+    padding: 24,
+    width: '100%',
+    maxWidth: 420,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 6,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
+  },
+  modalSub: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 16,
   },
   modalActions: {
     flexDirection: 'row',
-    marginTop: 12,
+    gap: 12,
+    marginTop: 8,
   },
-  modalCancelBtn: {
+  modalBtn: {
     flex: 1,
-    marginRight: 8,
+    height: 46,
   },
-  modalSubmitBtn: {
-    flex: 1,
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.dangerBg,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
     marginLeft: 8,
+    flex: 1,
   },
 });

@@ -1,23 +1,55 @@
 export const colors = {
-  background: '#0F172A',
-  surface: '#1E293B',
-  surfaceLight: '#334155',
-  border: '#334155',
-  borderLight: '#475569',
-  primary: '#3B82F6',
-  primaryDark: '#2563EB',
-  primaryLight: '#60A5FA',
-  text: '#F8FAFC',
-  textSecondary: '#94A3B8',
-  textMuted: '#64748B',
-  success: '#10B981',
-  successBg: 'rgba(16, 185, 129, 0.15)',
-  danger: '#EF4444',
-  dangerBg: 'rgba(239, 68, 68, 0.15)',
-  warning: '#F59E0B',
-  warningBg: 'rgba(245, 158, 11, 0.15)',
-  info: '#06B6D4',
-  infoBg: 'rgba(6, 182, 212, 0.15)',
-  purple: '#8B5CF6',
-  purpleBg: 'rgba(139, 92, 246, 0.15)',
+  // Screen Background: Clean, minimal light neutral
+  background: '#F9FBFA',
+  backgroundSoft: '#F3F7F5',
+  backgroundSecondary: '#E8EEEB',
+
+  // Surface: Pure White for cards and containers
+  surface: '#FFFFFF',
+  surfaceLight: '#F3F7F5',
+  surfaceHover: '#E8F7F1',
+
+  // Borders: Subtle, clean soft light border
+  border: '#E4EBE8',
+  borderLight: '#EDF2F0',
+
+  // Primary Accent: Figma Emerald Green
+  primary: '#0D8F6F',
+  primaryDark: '#087158',
+  primaryLight: '#14A380',
+  primarySoft: '#E8F7F1',
+  mintBar: '#6FE0BD',
+
+  // Typography: Dark Charcoal Ink & Muted Slate
+  text: '#16201D',
+  textSecondary: '#6E7B77',
+  textMuted: '#8E9B97',
+  textLight: '#A4B0AC',
+
+  // Headers & White Text
+  headerText: '#16201D',
+  headerSubtext: '#6E7B77',
+  white: '#FFFFFF',
+
+  // Semantic Status & Card Colors (from Figma)
+  success: '#0D8F6F',
+  successBg: '#E8F7F1',
+  danger: '#CF5B56',
+  dangerBg: '#FFF0EE',
+  warning: '#D98535',
+  warningBg: '#FFF5E9',
+  info: '#4D7DBD',
+  infoBg: '#EDF4FB',
+  purple: '#7F6AB4',
+  purpleBg: '#F2EFFA',
+  peach: '#FDE9DD',
+  peachText: '#92543C',
+
+  // Tones for Avatars and Group Tags
+  tones: {
+    mint: { bg: '#E8F7F1', text: '#27584B' },
+    peach: { bg: '#FDE9DD', text: '#92543C' },
+    sky: { bg: '#E1EFFC', text: '#42698E' },
+    purple: { bg: '#EBE5F7', text: '#68538F' },
+  },
 };

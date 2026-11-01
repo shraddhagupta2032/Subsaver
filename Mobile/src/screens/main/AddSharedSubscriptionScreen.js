@@ -16,6 +16,7 @@ import { sharedSubscriptionsApi } from '../../api/sharedSubscriptions';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors } from '../../theme/colors';
 
 const BILLING_CYCLES = ['MONTHLY', 'YEARLY', 'WEEKLY', 'CUSTOM'];
@@ -199,19 +200,14 @@ export const AddSharedSubscriptionScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Shared Subscription</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
       <ScrollView contentContainerStyle={styles.content}>
+        <ScreenHeader
+          title="Add Shared Subscription"
+          subtitle="Split recurring costs across members"
+          back
+          onBack={() => navigation.goBack()}
+        />
+
         {error && (
           <View style={styles.errorBox}>
             <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
@@ -427,26 +423,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
   content: {
     padding: 16,
     paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   errorBox: {
     flexDirection: 'row',
@@ -576,8 +558,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   memberRowSelected: {
-    borderColor: 'rgba(59, 130, 246, 0.4)',
-    borderWidth: 1,
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: colors.primarySoft,
   },
   memberInfo: {
     flex: 1,
@@ -593,8 +576,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   previewBox: {
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    backgroundColor: colors.primarySoft,
+    borderColor: '#C6ECD9',
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,

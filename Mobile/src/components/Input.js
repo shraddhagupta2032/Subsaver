@@ -15,6 +15,7 @@ export const Input = ({
   keyboardType = 'default',
   autoCapitalize = 'none',
   autoCorrect = false,
+  multiline = false,
 }) => {
   const [isSecure, setIsSecure] = useState(secureTextEntry);
   const [isFocused, setIsFocused] = useState(false);
@@ -24,21 +25,22 @@ export const Input = ({
       {label && <Text style={styles.label}>{label}</Text>}
       <View
         style={[
-          styles.inputWrapper,
+          styles.inputContainer,
           isFocused && styles.inputFocused,
-          !!error && styles.inputError,
+          error && styles.inputError,
+          multiline && styles.multilineContainer,
         ]}
       >
         {icon && (
           <Ionicons
             name={icon}
-            size={20}
-            color={error ? colors.danger : isFocused ? colors.primary : colors.textSecondary}
-            style={styles.leftIcon}
+            size={18}
+            color={isFocused ? colors.primary : colors.textMuted}
+            style={styles.leadingIcon}
           />
         )}
         <TextInput
-          style={styles.input}
+          style={[styles.input, multiline && styles.multilineInput]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -47,18 +49,19 @@ export const Input = ({
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
+          multiline={multiline}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />
         {secureTextEntry && (
           <TouchableOpacity
-            activeOpacity={0.7}
             onPress={() => setIsSecure(!isSecure)}
-            style={styles.eyeButton}
+            style={styles.eyeIcon}
+            activeOpacity={0.7}
           >
             <Ionicons
-              name={isSecure ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
+              name={isSecure ? 'eye-outline' : 'eye-off-outline'}
+              size={18}
               color={colors.textSecondary}
             />
           </TouchableOpacity>
@@ -74,42 +77,55 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textSecondary,
     marginBottom: 6,
   },
-  inputWrapper: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 12,
-    height: 50,
+    borderRadius: 14,
     paddingHorizontal: 14,
+    height: 50,
+  },
+  multilineContainer: {
+    height: 100,
+    alignItems: 'flex-start',
+    paddingVertical: 10,
   },
   inputFocused: {
     borderColor: colors.primary,
+    backgroundColor: '#FFFFFF',
   },
   inputError: {
     borderColor: colors.danger,
+    backgroundColor: colors.dangerBg,
   },
-  leftIcon: {
+  leadingIcon: {
     marginRight: 10,
   },
   input: {
     flex: 1,
+    fontSize: 15,
     color: colors.text,
-    fontSize: 16,
     height: '100%',
   },
-  eyeButton: {
-    padding: 4,
+  multilineInput: {
+    height: '100%',
+    textAlignVertical: 'top',
+  },
+  eyeIcon: {
+    padding: 6,
   },
   errorText: {
     color: colors.danger,
     fontSize: 12,
+    fontWeight: '600',
     marginTop: 4,
+    marginLeft: 2,
   },
 });

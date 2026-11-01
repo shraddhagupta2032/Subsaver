@@ -15,6 +15,7 @@ import { budgetsApi } from '../../api/budgets';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors } from '../../theme/colors';
 
 export const EditBudgetScreen = ({ route, navigation }) => {
@@ -90,24 +91,18 @@ export const EditBudgetScreen = ({ route, navigation }) => {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Budget</Text>
-        </View>
-
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <ScreenHeader
+            title="Edit Budget"
+            subtitle={budget?.category ? `Limit for ${budget.category}` : 'Update budget limit'}
+            back
+            onBack={() => navigation.goBack()}
+          />
           {serverError && (
             <View style={styles.errorBanner}>
               <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
@@ -192,29 +187,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: 6,
-    marginRight: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
   content: {
     flex: 1,
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   errorBanner: {
     flexDirection: 'row',

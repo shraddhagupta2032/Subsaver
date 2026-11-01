@@ -8,25 +8,33 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { expensesApi } from '../../api/expenses';
 import { groupsApi } from '../../api/groups';
-import { Input } from '../../components/Input';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
-import { Card } from '../../components/Card';
+import { Input } from '../../components/Input';
 import { colors } from '../../theme/colors';
 
 export const AddExpenseScreen = ({ route, navigation }) => {
   const { user } = useAuth();
-  const { groupId, groupName, members: initialMembers } = route.params || {};
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+  const { groupId: propGroupId, groupName, members: initialMembers } = route.params || {};
 
+  const [availableGroups, setAvailableGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState(propGroupId || null);
   const [members, setMembers] = useState(initialMembers || []);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [category, setCategory] = useState('Food & Dining');
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -39,28 +47,28 @@ export const AddExpenseScreen = ({ route, navigation }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function loadMembersIfNeeded() {
-      if ((!members || members.length === 0) && groupId) {
-        try {
-          const mems = await groupsApi.getGroupMembers(groupId);
+    async function loadGroupsAndMembers() {
+      try {
+        const grps = await groupsApi.getGroups();
+        setAvailableGroups(grps || []);
+        const targetId = selectedGroupId || (grps && grps.length > 0 ? grps[0].id : null);
+        if (targetId && !selectedGroupId) {
+          setSelectedGroupId(targetId);
+        }
+        if (targetId) {
+          const mems = await groupsApi.getGroupMembers(targetId);
           setMembers(mems || []);
           setSelectedUserIds(mems.map((m) => m.id || m.user_id));
           if (!payerId && mems.length > 0) {
             setPayerId(mems[0].id || mems[0].user_id);
           }
-        } catch (e) {
-          console.warn('Failed to load group members:', e);
         }
-      } else if (members && members.length > 0) {
-        setSelectedUserIds(members.map((m) => m.id || m.user_id));
-        if (!payerId) {
-          const currentInGroup = members.find((m) => (m.id || m.user_id) === user?.id);
-          setPayerId(currentInGroup ? user.id : members[0].id || members[0].user_id);
-        }
+      } catch (e) {
+        console.warn('Failed to load groups/members:', e);
       }
     }
-    loadMembersIfNeeded();
-  }, [groupId, members, payerId, user]);
+    loadGroupsAndMembers();
+  }, [selectedGroupId, payerId]);
 
   const toggleMemberSelection = (uid) => {
     if (selectedUserIds.includes(uid)) {
@@ -76,242 +84,239 @@ export const AddExpenseScreen = ({ route, navigation }) => {
 
   const parsedAmount = parseFloat(amount) || 0;
   const splitCount = selectedUserIds.length;
-  const estimatedShare = splitCount > 0 && parsedAmount > 0
-    ? (parsedAmount / splitCount).toFixed(2)
-    : '0.00';
+  const estimatedShare =
+    splitCount > 0 && parsedAmount > 0
+      ? (parsedAmount / splitCount).toFixed(2)
+      : '0.00';
 
   const handleCreateExpense = async () => {
     setError(null);
     if (!title.trim()) {
-      setError('Please enter an expense title.');
+      setError('Please enter what the expense was for.');
       return;
     }
     if (!amount || parsedAmount <= 0) {
       setError('Please enter a valid expense amount greater than 0.');
       return;
     }
+    if (!selectedGroupId) {
+      setError('Please select a group for this shared expense.');
+      return;
+    }
     if (!payerId) {
-      setError('Please select a payer.');
+      setError('Please select who paid for the expense.');
       return;
     }
     if (selectedUserIds.length === 0) {
-      setError('Please select at least one member to split with.');
+      setError('Please select at least one member to split the expense.');
       return;
     }
 
     try {
       setLoading(true);
-      const createdExpense = await expensesApi.createExpense({
+      await expensesApi.createExpense({
         title: title.trim(),
-        total_amount: parsedAmount.toFixed(2),
-        group_id: groupId,
+        total_amount: parsedAmount,
+        group_id: selectedGroupId,
         payer_id: payerId,
         split_user_ids: selectedUserIds,
-        expense_date: expenseDate.trim() || undefined,
-        due_date: dueDate.trim() || undefined,
+        expense_date: expenseDate,
+        due_date: dueDate || undefined,
         notes: notes.trim() || undefined,
       });
 
-      navigation.replace('ExpenseDetails', {
-        expenseId: createdExpense.id,
-      });
+      Alert.alert('Expense Added', `"${title.trim()}" was recorded and split successfully.`, [
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack(),
+        },
+      ]);
     } catch (err) {
-      setError(err.message || 'Failed to create expense.');
+      setError(err.message || 'Failed to record expense. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const payerObj = members.find((m) => (m.id || m.user_id) === payerId);
-  const payerName = payerObj?.name || payerObj?.user_name || (payerId === user?.id ? user?.name : 'Selected Payer');
-
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Add Expense</Text>
-            <Text style={styles.headerSubtitle}>{groupName || 'Group Expense'}</Text>
-          </View>
-        </View>
-
-        {error && (
-          <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-            <Text style={styles.errorBannerText}>{error}</Text>
-          </View>
-        )}
-
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { maxWidth: isDesktop ? 680 : '100%', paddingHorizontal: isDesktop ? 24 : 16 },
+          ]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Main Details */}
-          <Card>
+          <ScreenHeader
+            title="Add expense"
+            subtitle="Split it fairly, settle it easily."
+            back
+            onBack={() => navigation.goBack()}
+          />
+
+          {error && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
+              <Text style={styles.errorBannerText}>{error}</Text>
+            </View>
+          )}
+
+          {/* Amount Entry Card (Figma style) */}
+          <View style={styles.amountCard}>
+            <Text style={styles.amountLabel}>Amount</Text>
+            <View style={styles.amountInputRow}>
+              <Text style={styles.currencySymbol}>₹</Text>
+              <TextInput
+                style={styles.amountInput}
+                value={amount}
+                onChangeText={(text) => {
+                  setAmount(text);
+                  setError(null);
+                }}
+                placeholder="0"
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                keyboardType="decimal-pad"
+                autoFocus
+              />
+            </View>
+            {parsedAmount > 0 && (
+              <View style={styles.splitEstimatePill}>
+                <Ionicons name="people" size={14} color={colors.mintBar} />
+                <Text style={styles.splitEstimateText}>
+                  ₹{Number(estimatedShare).toLocaleString('en-IN')} per person ({splitCount} members)
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Form Fields Card */}
+          <View style={styles.formCard}>
             <Input
-              label="Expense Title"
+              label="What was it for?"
               value={title}
               onChangeText={(text) => {
                 setTitle(text);
                 setError(null);
               }}
-              placeholder="e.g. Groceries, WiFi Bill, Dinner"
+              placeholder="e.g. Dinner at Haldiram’s, Groceries"
               icon="receipt-outline"
             />
 
             <Input
-              label="Total Amount (₹)"
-              value={amount}
-              onChangeText={(text) => {
-                setAmount(text);
-                setError(null);
-              }}
-              placeholder="2000.00"
-              keyboardType="decimal-pad"
-              icon="cash-outline"
+              label="Category"
+              value={category}
+              onChangeText={setCategory}
+              placeholder="e.g. Food & dining, Travel, Bills"
+              icon="pricetag-outline"
             />
 
             <Input
-              label="Expense Date"
+              label="Date"
               value={expenseDate}
               onChangeText={setExpenseDate}
               placeholder="YYYY-MM-DD"
               icon="calendar-outline"
             />
 
-            <Input
-              label="Due Date (Optional)"
-              value={dueDate}
-              onChangeText={setDueDate}
-              placeholder="YYYY-MM-DD"
-              icon="time-outline"
-            />
+            {/* Group Selector */}
+            {availableGroups.length > 1 && (
+              <View style={styles.selectorGroup}>
+                <Text style={styles.fieldLabel}>Group</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
+                  {availableGroups.map((g) => {
+                    const isSelected = selectedGroupId === g.id;
+                    return (
+                      <TouchableOpacity
+                        key={g.id}
+                        style={[styles.selectorChip, isSelected && styles.selectorChipActive]}
+                        onPress={() => setSelectedGroupId(g.id)}
+                      >
+                        <Text style={[styles.selectorChipText, isSelected && styles.selectorChipTextActive]}>
+                          {g.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Payer Selector */}
+            <View style={styles.selectorGroup}>
+              <Text style={styles.fieldLabel}>Paid by</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
+                {members.map((m) => {
+                  const mId = m.id || m.user_id;
+                  const isPayer = payerId === mId;
+                  const isYou = mId === user?.id;
+                  return (
+                    <TouchableOpacity
+                      key={mId}
+                      style={[styles.payerChip, isPayer && styles.payerChipActive]}
+                      onPress={() => setPayerId(mId)}
+                    >
+                      <Avatar name={m.name || m.email} size="small" tone={isPayer ? 'mint' : 'sky'} />
+                      <Text style={[styles.payerChipText, isPayer && styles.payerChipTextActive]}>
+                        {isYou ? 'You' : (m.name || m.email).split(' ')[0]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Split Members Checkboxes */}
+            <View style={styles.selectorGroup}>
+              <Text style={styles.fieldLabel}>Split with ({selectedUserIds.length})</Text>
+              <View style={styles.membersList}>
+                {members.map((m) => {
+                  const mId = m.id || m.user_id;
+                  const isSelected = selectedUserIds.includes(mId);
+                  const isYou = mId === user?.id;
+                  return (
+                    <TouchableOpacity
+                      key={mId}
+                      style={[styles.memberCheckboxItem, isSelected && styles.memberCheckboxItemActive]}
+                      onPress={() => toggleMemberSelection(mId)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.memberCheckboxLeft}>
+                        <Avatar name={m.name || m.email} size="small" />
+                        <Text style={styles.memberCheckboxName}>
+                          {isYou ? `${m.name || 'You'} (You)` : m.name || m.email}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={22}
+                        color={isSelected ? colors.primary : colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
 
             <Input
               label="Notes (Optional)"
               value={notes}
               onChangeText={setNotes}
-              placeholder="Add any specific details..."
+              placeholder="Add any extra notes..."
               icon="document-text-outline"
             />
-          </Card>
 
-          {/* Payer Selection */}
-          <Card>
-            <Text style={styles.sectionTitle}>Paid By</Text>
-            <Text style={styles.sectionSubtitle}>Select who paid for this expense</Text>
-            <View style={styles.chipsContainer}>
-              {members.map((m) => {
-                const uid = m.id || m.user_id;
-                const isSelected = payerId === uid;
-                return (
-                  <TouchableOpacity
-                    key={uid}
-                    style={[styles.payerChip, isSelected && styles.payerChipSelected]}
-                    onPress={() => setPayerId(uid)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                      size={16}
-                      color={isSelected ? "#FFFFFF" : colors.textSecondary}
-                      style={styles.chipIcon}
-                    />
-                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                      {m.name || m.user_name} {uid === user?.id ? '(You)' : ''}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </Card>
-
-          {/* Members Split Selection */}
-          <Card>
-            <View style={styles.splitHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>Split Between</Text>
-                <Text style={styles.sectionSubtitle}>
-                  {selectedUserIds.length} of {members.length} members selected (Equal Split)
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.membersList}>
-              {members.map((m) => {
-                const uid = m.id || m.user_id;
-                const isChecked = selectedUserIds.includes(uid);
-                return (
-                  <TouchableOpacity
-                    key={uid}
-                    style={styles.memberCheckRow}
-                    onPress={() => toggleMemberSelection(uid)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={isChecked ? "checkbox" : "square-outline"}
-                      size={22}
-                      color={isChecked ? colors.primary : colors.textMuted}
-                    />
-                    <Text style={styles.memberRowName}>
-                      {m.name || m.user_name} {uid === user?.id ? '(You)' : ''}
-                    </Text>
-                    {isChecked && parsedAmount > 0 && (
-                      <Text style={styles.memberRowShare}>₹{estimatedShare}</Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </Card>
-
-          {/* Equal Split Summary Preview */}
-          {parsedAmount > 0 && splitCount > 0 && (
-            <Card style={styles.summaryCard}>
-              <View style={styles.summaryHeader}>
-                <Ionicons name="calculator-outline" size={20} color={colors.success} />
-                <Text style={styles.summaryTitle}>Split Summary Preview</Text>
-              </View>
-              <Text style={styles.summarySubtext}>
-                {payerName} paid ₹{parsedAmount.toFixed(2)}
-              </Text>
-              <View style={styles.previewDivider} />
-              {members
-                .filter((m) => selectedUserIds.includes(m.id || m.user_id))
-                .map((m) => {
-                  const uid = m.id || m.user_id;
-                  const isPayer = uid === payerId;
-                  return (
-                    <View key={uid} style={styles.previewRow}>
-                      <Text style={styles.previewMemberName}>
-                        {m.name || m.user_name} {isPayer ? '(Payer)' : ''}
-                      </Text>
-                      <Text style={[styles.previewStatus, isPayer ? styles.statusPaid : styles.statusOwes]}>
-                        {isPayer ? 'PAID ₹' + estimatedShare : 'owes ₹' + estimatedShare}
-                      </Text>
-                    </View>
-                  );
-                })}
-            </Card>
-          )}
-
-          <Button
-            title="Create Shared Expense"
-            onPress={handleCreateExpense}
-            loading={loading}
-            style={styles.submitBtn}
-          />
+            <Button
+              title="Save & split expense"
+              onPress={handleCreateExpense}
+              loading={loading}
+              style={{ marginTop: 8 }}
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -326,164 +331,175 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  header: {
+  scrollContent: {
+    paddingBottom: 110,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  amountCard: {
+    backgroundColor: colors.primaryDark,
+    borderRadius: 22,
+    padding: 22,
+    marginBottom: 16,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  amountLabel: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  amountInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  },
+  currencySymbol: {
+    color: '#FFFFFF',
+    fontSize: 34,
+    fontWeight: '800',
+    marginRight: 6,
+  },
+  amountInput: {
+    color: '#FFFFFF',
+    fontSize: 36,
+    fontWeight: '800',
+    flex: 1,
+    height: 52,
+    padding: 0,
+  },
+  splitEstimatePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 99,
+    marginTop: 10,
+  },
+  splitEstimateText: {
+    color: colors.mintBar,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 20,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    marginBottom: 20,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  selectorGroup: {
+    marginBottom: 18,
+  },
+  chipsScroll: {
+    flexDirection: 'row',
+  },
+  selectorChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: 8,
+  },
+  selectorChipActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  selectorChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  selectorChipTextActive: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  payerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: 8,
+    gap: 8,
+  },
+  payerChipActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  payerChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  payerChipTextActive: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  membersList: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  memberCheckboxItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backButton: {
-    padding: 6,
-    marginRight: 8,
+  memberCheckboxItemActive: {
+    backgroundColor: '#FFFFFF',
   },
-  headerTitleContainer: {
-    flex: 1,
+  memberCheckboxLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+  memberCheckboxName: {
+    fontSize: 14,
+    fontWeight: '600',
     color: colors.text,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 36,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.dangerBg,
-    borderColor: colors.danger,
-    borderWidth: 1,
     borderRadius: 12,
-    margin: 16,
-    marginBottom: 0,
     padding: 12,
+    marginBottom: 14,
   },
   errorBannerText: {
     color: colors.danger,
     fontSize: 13,
     marginLeft: 8,
     flex: 1,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginBottom: 12,
-  },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  payerChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    margin: 4,
-  },
-  payerChipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryDark,
-  },
-  chipIcon: {
-    marginRight: 6,
-  },
-  chipText: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  chipTextSelected: {
-    color: '#FFFFFF',
-  },
-  splitHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  membersList: {
-    marginTop: 4,
-  },
-  memberCheckRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  memberRowName: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 10,
-  },
-  memberRowShare: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primaryLight,
-  },
-  summaryCard: {
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  summaryTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.success,
-    marginLeft: 8,
-  },
-  summarySubtext: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  previewDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 10,
-  },
-  previewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  previewMemberName: {
-    fontSize: 13,
-    color: colors.text,
-  },
-  previewStatus: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  statusPaid: {
-    color: colors.success,
-  },
-  statusOwes: {
-    color: colors.warning,
-  },
-  submitBtn: {
-    marginTop: 8,
   },
 });

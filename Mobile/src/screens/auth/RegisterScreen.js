@@ -35,12 +35,8 @@ export const RegisterScreen = ({ navigation }) => {
       setError('Please enter your email address.');
       return;
     }
-    if (!password) {
-      setError('Please enter a password.');
-      return;
-    }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+      setError('Password must be at least 6 characters.');
       return;
     }
     if (password !== confirmPassword) {
@@ -52,7 +48,7 @@ export const RegisterScreen = ({ navigation }) => {
       setLoading(true);
       await register(name.trim(), email.trim(), password);
     } catch (err) {
-      setError(err.message || 'Registration failed. Please check your details.');
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -70,21 +66,21 @@ export const RegisterScreen = ({ navigation }) => {
         >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Ionicons name="person-add-outline" size={36} color={colors.primary} />
+              <Ionicons name="sparkles" size={32} color={colors.primary} />
             </View>
             <Text style={styles.appName}>Create Account</Text>
             <Text style={styles.tagline}>
-              Join SubSaver to track and split expenses with ease
+              Start tracking subscriptions and splitting expenses easily
             </Text>
           </View>
 
           <View style={styles.formContainer}>
-            <Text style={styles.title}>Register</Text>
-            <Text style={styles.subtitle}>Enter your details below</Text>
+            <Text style={styles.title}>Join SubSaver</Text>
+            <Text style={styles.subtitle}>Fill in your details to get started</Text>
 
             {error && (
               <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+                <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
                 <Text style={styles.errorBannerText}>{error}</Text>
               </View>
             )}
@@ -96,7 +92,7 @@ export const RegisterScreen = ({ navigation }) => {
                 setName(text);
                 setError(null);
               }}
-              placeholder="e.g. Alex Johnson"
+              placeholder="e.g. Aarav Mehta"
               icon="person-outline"
               autoCapitalize="words"
             />
@@ -121,7 +117,7 @@ export const RegisterScreen = ({ navigation }) => {
                 setPassword(text);
                 setError(null);
               }}
-              placeholder="Minimum 6 characters"
+              placeholder="Min. 6 characters"
               icon="lock-closed-outline"
               secureTextEntry
             />
@@ -133,7 +129,7 @@ export const RegisterScreen = ({ navigation }) => {
                 setConfirmPassword(text);
                 setError(null);
               }}
-              placeholder="Re-enter password"
+              placeholder="Re-enter your password"
               icon="shield-checkmark-outline"
               secureTextEntry
             />
@@ -173,6 +169,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    maxWidth: 460,
+    width: '100%',
+    alignSelf: 'center',
   },
   header: {
     alignItems: 'center',
@@ -181,18 +180,19 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: 64,
     height: 64,
-    borderRadius: 18,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderRadius: 20,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1.5,
+    borderColor: 'rgba(13, 143, 111, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   appName: {
     fontSize: 26,
     fontWeight: '800',
     color: colors.text,
+    letterSpacing: -0.5,
   },
   tagline: {
     fontSize: 13,
@@ -202,22 +202,28 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 20,
+    padding: 22,
     marginBottom: 20,
+    shadowColor: '#183129',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
     marginBottom: 4,
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   errorBanner: {
     flexDirection: 'row',
@@ -225,7 +231,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerBg,
     borderColor: colors.danger,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
     marginBottom: 16,
   },
@@ -234,6 +240,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 8,
     flex: 1,
+    fontWeight: '500',
   },
   registerButton: {
     marginTop: 8,
@@ -250,7 +257,7 @@ const styles = StyleSheet.create({
   },
   loginLink: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 14,
   },
 });
