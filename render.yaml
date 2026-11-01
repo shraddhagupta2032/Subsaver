@@ -1,6 +1,7 @@
 services:
   - type: web
     name: subsaver-api
+    plan: free
     runtime: python
     rootDir: Backend
     buildCommand: pip install -r requirements.txt
